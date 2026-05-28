@@ -7,19 +7,24 @@ import {
   CreditCard,
   Gauge,
   HandCoins,
+  Layers2,
   PackageSearch,
   ReceiptText,
   TrendingUp,
+  Truck,
   Users
 } from "lucide-react";
 
-export type StockStatus = "En stock" | "Bajo stock" | "Sin stock";
 export type SaleStatus = "Pagado" | "Pendiente" | "Cancelado";
+
+/** @deprecated Usar WorkOrderStatus desde @/types/crm */
 export type RepairStatus = "En espera" | "En reparación" | "Lista para entregar";
 
 export const navItems = [
   { id: "dashboard", label: "Dashboard", icon: Gauge },
   { id: "stock", label: "Stock", icon: Boxes },
+  { id: "categorias", label: "Categorías", icon: Layers2 },
+  { id: "proveedores", label: "Proveedores", icon: Truck },
   { id: "ventas", label: "Ventas", icon: ReceiptText },
   { id: "clientes", label: "Clientes", icon: Users },
   { id: "taller", label: "Taller", icon: ClipboardCheck },
@@ -116,69 +121,6 @@ export const categorySales = [
   { name: "Transmisión", value: 11 }
 ];
 
-export const products = [
-  {
-    id: "P-1041",
-    name: "Aceite Motul 5100 15W50 4T",
-    category: "Lubricantes",
-    stock: 42,
-    min: 12,
-    price: 48000,
-    status: "En stock" as StockStatus,
-    accent: "from-red-600 to-zinc-900"
-  },
-  {
-    id: "P-1188",
-    name: "Casco LS2 FF353 Rookie",
-    category: "Cascos",
-    stock: 7,
-    min: 6,
-    price: 110000,
-    status: "Bajo stock" as StockStatus,
-    accent: "from-white/70 to-red-700"
-  },
-  {
-    id: "P-1250",
-    name: "Pastillas de freno Brembo Carbon",
-    category: "Frenos",
-    stock: 19,
-    min: 10,
-    price: 38000,
-    status: "En stock" as StockStatus,
-    accent: "from-red-700 to-neutral-800"
-  },
-  {
-    id: "P-1324",
-    name: "Cubierta Pirelli Diablo Rosso II",
-    category: "Cubiertas",
-    stock: 3,
-    min: 5,
-    price: 116000,
-    status: "Bajo stock" as StockStatus,
-    accent: "from-zinc-700 to-red-800"
-  },
-  {
-    id: "P-1428",
-    name: "Kit transmisión Riffel CG 150",
-    category: "Transmisión",
-    stock: 0,
-    min: 4,
-    price: 111000,
-    status: "Sin stock" as StockStatus,
-    accent: "from-neutral-700 to-neutral-950"
-  },
-  {
-    id: "P-1571",
-    name: "Bujía NGK Iridium CR8EIX",
-    category: "Encendido",
-    stock: 24,
-    min: 8,
-    price: 24500,
-    status: "En stock" as StockStatus,
-    accent: "from-red-500 to-neutral-900"
-  }
-];
-
 export const recentSales = [
   {
     id: "#V-9018",
@@ -215,81 +157,6 @@ export const recentSales = [
     method: "Efectivo",
     status: "Cancelado" as SaleStatus,
     items: "Pastillas Brembo"
-  }
-];
-
-export const customers = [
-  {
-    name: "Matías Ferreyra",
-    phone: "+54 9 11 5823-4481",
-    bike: "Yamaha FZ 2.0",
-    plate: "A184KLM",
-    debt: 0,
-    lastVisit: "16 May 2026",
-    history: ["Cambio de aceite Motul 5100", "Ajuste de cadena", "Pastillas delanteras"]
-  },
-  {
-    name: "Sofía Martínez",
-    phone: "+54 9 11 6388-1194",
-    bike: "Honda Wave 110",
-    plate: "A092RTR",
-    debt: 32000,
-    lastVisit: "15 May 2026",
-    history: ["Service completo", "Cambio de cubierta trasera", "Revisión eléctrica"]
-  },
-  {
-    name: "Lucas Benítez",
-    phone: "+54 9 11 4412-9090",
-    bike: "Bajaj Rouser NS 200",
-    plate: "AF214DQ",
-    debt: 94000,
-    lastVisit: "14 May 2026",
-    history: ["Kit transmisión Riffel", "Regulación de válvulas", "Diagnóstico freno trasero"]
-  },
-  {
-    name: "Camila Duarte",
-    phone: "+54 9 11 7001-2348",
-    bike: "Zanella RX 150",
-    plate: "AA918MN",
-    debt: 0,
-    lastVisit: "12 May 2026",
-    history: ["Batería nueva", "Limpieza de carburador", "Cable embrague"]
-  }
-];
-
-export const repairs = [
-  {
-    id: "T-310",
-    customer: "Lucas Benítez",
-    bike: "Bajaj Rouser NS 200",
-    problem: "Ruido en transmisión y tironeo en baja",
-    status: "En reparación" as RepairStatus,
-    date: "16 May 2026",
-    mechanic: "Ezequiel R.",
-    progress: 58,
-    steps: ["Recepción", "Diagnóstico", "Repuestos", "Armado", "Prueba"]
-  },
-  {
-    id: "T-309",
-    customer: "Sofía Martínez",
-    bike: "Honda Wave 110",
-    problem: "Falla eléctrica intermitente",
-    status: "En espera" as RepairStatus,
-    date: "16 May 2026",
-    mechanic: "Nicolás P.",
-    progress: 22,
-    steps: ["Recepción", "Diagnóstico", "Repuestos", "Armado", "Prueba"]
-  },
-  {
-    id: "T-307",
-    customer: "Camila Duarte",
-    bike: "Zanella RX 150",
-    problem: "Service completo + carburación",
-    status: "Lista para entregar" as RepairStatus,
-    date: "15 May 2026",
-    mechanic: "Alan G.",
-    progress: 100,
-    steps: ["Recepción", "Diagnóstico", "Repuestos", "Armado", "Prueba"]
   }
 ];
 
