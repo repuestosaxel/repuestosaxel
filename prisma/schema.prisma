@@ -1,6 +1,6 @@
 // Esquema PostgreSQL (Supabase) — AYG Motor Racing
 // Ejecutar: npx prisma migrate dev
-// Requiere: DATABASE_URL en .env
+// Requiere: SUPABASE_URL en .env
 
 generator client {
   provider = "prisma-client-js"
@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("SUPABASE_URL")
 }
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
