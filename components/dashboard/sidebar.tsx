@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
-import { navItems, type ModuleId } from "@/data/mock-data";
+import { navItems, type ModuleId } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 type SidebarProps = {

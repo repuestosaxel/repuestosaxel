@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -14,22 +15,26 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import {
+  ClipboardCheck,
+  HandCoins,
+  PackageSearch,
+  TrendingUp,
+  Users
+} from "lucide-react";
 
 import { ChartCard } from "@/components/dashboard/chart-card";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  activities,
-  categorySales,
-  dashboardStats,
-  monthlyIncome,
-  topProducts,
-  weeklySales
-} from "@/data/mock-data";
+import { api } from "@/lib/api/client";
 import { money } from "@/lib/utils";
+import type { DashboardMetrics } from "@/types/dashboard";
 
 const chartColors = ["#ff0000", "#b30000", "#ffffff", "#6b7280", "#ef4444"];
+
+const statIcons = [HandCoins, TrendingUp, PackageSearch, ClipboardCheck, Users, TrendingUp];
 
 const tooltipStyle = {
   background: "#0b0b0b",
@@ -39,6 +44,65 @@ const tooltipStyle = {
 };
 
 export function DashboardOverview() {
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      try {
+        const data = await api.get<DashboardMetrics>("/api/dashboard");
+        if (active) setMetrics(data);
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "No se pudo cargar el dashboard.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <ModuleShell
+        eyebrow="Centro de comando"
+        title="Performance del negocio en tiempo real"
+        description="Cargando métricas desde la base de datos..."
+      >
+        <EmptyState
+          title="Sincronizando datos"
+          description="Obteniendo ventas, stock y taller..."
+          action="Cargando"
+        />
+      </ModuleShell>
+    );
+  }
+
+  if (error || !metrics) {
+    return (
+      <ModuleShell
+        eyebrow="Centro de comando"
+        title="Performance del negocio en tiempo real"
+        description="No se pudieron cargar las métricas."
+      >
+        <EmptyState
+          title="Error al cargar dashboard"
+          description={error ?? "Verificá la conexión a la base de datos."}
+          action="Reintentar"
+        />
+      </ModuleShell>
+    );
+  }
+
+  const { stats, weeklySales, topProducts, monthlyIncome, categorySales, activities } = metrics;
+
   return (
     <ModuleShell
       eyebrow="Centro de comando"
@@ -46,14 +110,14 @@ export function DashboardOverview() {
       description="Una vista ejecutiva para controlar ventas, stock, taller y flujo financiero con foco en velocidad y decisión."
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {dashboardStats.map((stat) => (
+        {stats.map((stat, index) => (
           <StatCard
             key={stat.title}
             title={stat.title}
             value={stat.value}
             trend={stat.trend}
             label={stat.label}
-            icon={stat.icon}
+            icon={statIcons[index] ?? HandCoins}
             moneyValue={stat.value > 1000}
           />
         ))}
@@ -115,16 +179,22 @@ export function DashboardOverview() {
             <CardTitle>Categorías calientes</CardTitle>
           </CardHeader>
           <CardContent className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={categorySales} dataKey="value" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={4}>
-                  {categorySales.map((entry, index) => (
-                    <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
+            {categorySales.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-white/42">
+                Sin ventas por categoría aún.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={categorySales} dataKey="value" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={4}>
+                    {categorySales.map((entry, index) => (
+                      <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -134,15 +204,21 @@ export function DashboardOverview() {
           <CardTitle>Actividad reciente</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {activities.map((activity) => (
-              <div key={activity.title} className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
-                <p className="font-display text-sm font-bold text-white">{activity.title}</p>
-                <p className="mt-2 text-sm leading-5 text-white/54">{activity.detail}</p>
-                <p className="mt-3 text-xs font-semibold text-racing-red">{activity.time}</p>
-              </div>
-            ))}
-          </div>
+          {activities.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/42">
+              Sin actividad reciente registrada.
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {activities.map((activity) => (
+                <div key={`${activity.title}-${activity.time}`} className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
+                  <p className="font-display text-sm font-bold text-white">{activity.title}</p>
+                  <p className="mt-2 text-sm leading-5 text-white/54">{activity.detail}</p>
+                  <p className="mt-3 text-xs font-semibold text-racing-red">{activity.time}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </ModuleShell>

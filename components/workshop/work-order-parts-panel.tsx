@@ -34,7 +34,7 @@ export function WorkOrderPartsPanel({ order, status }: WorkOrderPartsPanelProps)
     [availableProducts, productId]
   );
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const qty = Number(quantity);
     if (!productId) {
       setError("Seleccioná un producto del inventario.");
@@ -46,7 +46,7 @@ export function WorkOrderPartsPanel({ order, status }: WorkOrderPartsPanelProps)
     }
 
     setAdding(true);
-    const result = addPartToWorkOrder(order.id, productId, qty);
+    const result = await addPartToWorkOrder(order.id, productId, qty);
     setAdding(false);
 
     if (!result.ok) {

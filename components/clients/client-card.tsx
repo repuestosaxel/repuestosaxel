@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useCrm } from "@/contexts/crm-context";
+import { useSales } from "@/contexts/sales-context";
 import type { Customer } from "@/types/crm";
 
 type ClientCardProps = {
@@ -15,7 +16,8 @@ type ClientCardProps = {
 };
 
 export function ClientCard({ customer, onView }: ClientCardProps) {
-  const { getMotorcyclesByCustomer, getSalesByCustomer, getWorkOrdersByCustomer } = useCrm();
+  const { getMotorcyclesByCustomer, getWorkOrdersByCustomer } = useCrm();
+  const { getSalesByCustomer } = useSales();
   const motorcycles = getMotorcyclesByCustomer(customer.id);
   const sales = getSalesByCustomer(customer.id);
   const orders = getWorkOrdersByCustomer(customer.id);

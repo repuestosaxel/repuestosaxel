@@ -4,32 +4,19 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode
 } from "react";
 
-import {
-  seedCustomerSales,
-  seedCustomers,
-  seedMotorcycles,
-  seedWorkOrders
-} from "@/data/crm-seed";
-import {
-  formatCrmDate,
-  formatCrmDateTime,
-  generateCustomerId,
-  generateMotorcycleId,
-  generateWorkOrderId,
-  generateWorkOrderPartId
-} from "@/lib/crm";
+import { api } from "@/lib/api/client";
 import type {
-  AddWorkOrderPartInput,
   CreateCustomerInput,
   CreateMotorcycleInput,
   CreateWorkOrderInput,
+  CrmSnapshot,
   Customer,
-  CustomerSale,
   Motorcycle,
   UpdateWorkOrderInput,
   WorkOrder,
@@ -39,18 +26,18 @@ import type {
 type CrmContextValue = {
   customers: Customer[];
   motorcycles: Motorcycle[];
-  customerSales: CustomerSale[];
   workOrders: WorkOrder[];
-  addCustomer: (input: CreateCustomerInput) => Customer;
-  addMotorcycle: (customerId: string, input: CreateMotorcycleInput) => Motorcycle;
-  addWorkOrder: (input: CreateWorkOrderInput) => WorkOrder;
-  updateWorkOrder: (id: string, input: UpdateWorkOrderInput) => WorkOrder | undefined;
-  updateWorkOrderStatus: (id: string, status: WorkOrderStatus) => WorkOrder | undefined;
-  addWorkOrderPart: (orderId: string, input: AddWorkOrderPartInput) => WorkOrder | undefined;
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  addCustomer: (input: CreateCustomerInput) => Promise<Customer>;
+  addMotorcycle: (customerId: string, input: CreateMotorcycleInput) => Promise<Motorcycle>;
+  addWorkOrder: (input: CreateWorkOrderInput) => Promise<WorkOrder>;
+  updateWorkOrder: (id: string, input: UpdateWorkOrderInput) => Promise<WorkOrder | undefined>;
+  updateWorkOrderStatus: (id: string, status: WorkOrderStatus) => Promise<WorkOrder | undefined>;
   getCustomerById: (id: string) => Customer | undefined;
   getMotorcycleById: (id: string) => Motorcycle | undefined;
   getMotorcyclesByCustomer: (customerId: string) => Motorcycle[];
-  getSalesByCustomer: (customerId: string) => CustomerSale[];
   getWorkOrdersByCustomer: (customerId: string) => WorkOrder[];
   getWorkOrderById: (id: string) => WorkOrder | undefined;
   getActiveWorkOrders: () => WorkOrder[];
@@ -58,11 +45,44 @@ type CrmContextValue = {
 
 const CrmContext = createContext<CrmContextValue | null>(null);
 
+async function fetchCrmSnapshot(): Promise<CrmSnapshot> {
+  const [customers, motorcycles, workOrders] = await Promise.all([
+    api.get<Customer[]>("/api/customers"),
+    api.get<Motorcycle[]>("/api/motorcycles"),
+    api.get<WorkOrder[]>("/api/work-orders")
+  ]);
+
+  return { customers, motorcycles, workOrders };
+}
+
 export function CrmProvider({ children }: { children: ReactNode }) {
-  const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
-  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(seedMotorcycles);
-  const [customerSales] = useState<CustomerSale[]>(seedCustomerSales);
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(seedWorkOrders);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>([]);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const applySnapshot = useCallback((snapshot: CrmSnapshot) => {
+    setCustomers(snapshot.customers);
+    setMotorcycles(snapshot.motorcycles);
+    setWorkOrders(snapshot.workOrders);
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setError(null);
+    try {
+      const snapshot = await fetchCrmSnapshot();
+      applySnapshot(snapshot);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cargar CRM.");
+    } finally {
+      setLoading(false);
+    }
+  }, [applySnapshot]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const getCustomerById = useCallback(
     (id: string) => customers.find((customer) => customer.id === id),
@@ -77,14 +97,6 @@ export function CrmProvider({ children }: { children: ReactNode }) {
   const getMotorcyclesByCustomer = useCallback(
     (customerId: string) => motorcycles.filter((m) => m.customerId === customerId),
     [motorcycles]
-  );
-
-  const getSalesByCustomer = useCallback(
-    (customerId: string) =>
-      customerSales
-        .filter((sale) => sale.customerId === customerId)
-        .sort((a, b) => b.date.localeCompare(a.date)),
-    [customerSales]
   );
 
   const getWorkOrdersByCustomer = useCallback(
@@ -105,180 +117,60 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     [workOrders]
   );
 
-  const addCustomer = useCallback(
-    (input: CreateCustomerInput) => {
-      const customer: Customer = {
-        id: generateCustomerId(customers),
-        name: input.name.trim(),
-        phone: input.phone.trim(),
-        email: input.email?.trim() || undefined,
-        notes: input.notes?.trim() || undefined,
-        accountEnabled: input.accountEnabled,
-        balance: input.accountEnabled ? (input.initialBalance ?? 0) : 0,
-        lastVisit: formatCrmDate(),
-        createdAt: formatCrmDate()
-      };
+  const addCustomer = useCallback(async (input: CreateCustomerInput) => {
+    const customer = await api.post<Customer>("/api/customers", input);
+    setCustomers((current) => [...current, customer]);
+    await refresh();
+    return customer;
+  }, [refresh]);
 
-      setCustomers((current) => [...current, customer]);
+  const addMotorcycle = useCallback(async (customerId: string, input: CreateMotorcycleInput) => {
+    const motorcycle = await api.post<Motorcycle>("/api/motorcycles", {
+      customerId,
+      ...input
+    });
+    setMotorcycles((current) => [...current, motorcycle]);
+    return motorcycle;
+  }, []);
 
-      if (input.motorcycles?.length) {
-        setMotorcycles((current) => {
-          const motoList = [...current];
-          const created: Motorcycle[] = [];
+  const addWorkOrder = useCallback(async (input: CreateWorkOrderInput) => {
+    const order = await api.post<WorkOrder>("/api/work-orders", input);
+    setWorkOrders((current) => [order, ...current]);
+    setCustomers((current) =>
+      current.map((customer) =>
+        customer.id === input.customerId ? { ...customer, lastVisit: order.createdAt } : customer
+      )
+    );
+    return order;
+  }, []);
 
-          for (const moto of input.motorcycles!) {
-            const motorcycle: Motorcycle = {
-              id: generateMotorcycleId(motoList),
-              customerId: customer.id,
-              brandModel: moto.brandModel.trim(),
-              plate: moto.plate.trim().toUpperCase(),
-              year: moto.year,
-              notes: moto.notes?.trim() || undefined
-            };
-            motoList.push(motorcycle);
-            created.push(motorcycle);
-          }
-
-          return [...current, ...created];
-        });
-      }
-
-      return customer;
-    },
-    [customers]
-  );
-
-  const addMotorcycle = useCallback(
-    (customerId: string, input: CreateMotorcycleInput) => {
-      const motorcycle: Motorcycle = {
-        id: generateMotorcycleId(motorcycles),
-        customerId,
-        brandModel: input.brandModel.trim(),
-        plate: input.plate.trim().toUpperCase(),
-        year: input.year,
-        notes: input.notes?.trim() || undefined
-      };
-
-      setMotorcycles((current) => [...current, motorcycle]);
-      return motorcycle;
-    },
-    [motorcycles]
-  );
-
-  const addWorkOrder = useCallback(
-    (input: CreateWorkOrderInput) => {
-      const now = formatCrmDateTime();
-      const order: WorkOrder = {
-        id: generateWorkOrderId(workOrders),
-        customerId: input.customerId,
-        motorcycleId: input.motorcycleId || undefined,
-        problem: input.problem.trim(),
-        observations: input.observations?.trim() || undefined,
-        status: input.status ?? "En espera",
-        mechanic: input.mechanic,
-        parts: [],
-        laborCost: undefined,
-        createdAt: formatCrmDate(),
-        updatedAt: now
-      };
-
-      setWorkOrders((current) => [order, ...current]);
-
-      setCustomers((current) =>
-        current.map((customer) =>
-          customer.id === input.customerId
-            ? { ...customer, lastVisit: formatCrmDate() }
-            : customer
-        )
-      );
-
-      return order;
-    },
-    [workOrders]
-  );
-
-  const updateWorkOrder = useCallback(
-    (id: string, input: UpdateWorkOrderInput) => {
-      let updated: WorkOrder | undefined;
-
-      setWorkOrders((current) =>
-        current.map((order) => {
-          if (order.id !== id) return order;
-
-          updated = {
-            ...order,
-            problem: input.problem?.trim() ?? order.problem,
-            observations: input.observations?.trim() ?? order.observations,
-            mechanic: input.mechanic ?? order.mechanic,
-            status: input.status ?? order.status,
-            laborCost: input.laborCost !== undefined ? input.laborCost : order.laborCost,
-            updatedAt: formatCrmDateTime()
-          };
-
-          return updated;
-        })
-      );
-
-      return updated;
-    },
-    []
-  );
+  const updateWorkOrder = useCallback(async (id: string, input: UpdateWorkOrderInput) => {
+    const order = await api.patch<WorkOrder>(`/api/work-orders/${id}`, input);
+    setWorkOrders((current) => current.map((item) => (item.id === id ? order : item)));
+    return order;
+  }, []);
 
   const updateWorkOrderStatus = useCallback(
-    (id: string, status: WorkOrderStatus) => updateWorkOrder(id, { status }),
+    async (id: string, status: WorkOrderStatus) => updateWorkOrder(id, { status }),
     [updateWorkOrder]
-  );
-
-  const addWorkOrderPart = useCallback(
-    (orderId: string, input: AddWorkOrderPartInput) => {
-      let updated: WorkOrder | undefined;
-
-      setWorkOrders((current) =>
-        current.map((order) => {
-          if (order.id !== orderId) return order;
-
-          const part = {
-            id: generateWorkOrderPartId(order.parts),
-            productId: input.productId,
-            productName: input.productName,
-            internalCode: input.internalCode,
-            quantity: input.quantity,
-            unitPrice: input.unitPrice,
-            subtotal: input.unitPrice * input.quantity,
-            addedAt: formatCrmDateTime()
-          };
-
-          updated = {
-            ...order,
-            parts: [...order.parts, part],
-            updatedAt: formatCrmDateTime()
-          };
-
-          return updated;
-        })
-      );
-
-      return updated;
-    },
-    []
   );
 
   const value = useMemo(
     () => ({
       customers,
       motorcycles,
-      customerSales,
       workOrders,
+      loading,
+      error,
+      refresh,
       addCustomer,
       addMotorcycle,
       addWorkOrder,
       updateWorkOrder,
       updateWorkOrderStatus,
-      addWorkOrderPart,
       getCustomerById,
       getMotorcycleById,
       getMotorcyclesByCustomer,
-      getSalesByCustomer,
       getWorkOrdersByCustomer,
       getWorkOrderById,
       getActiveWorkOrders
@@ -286,18 +178,18 @@ export function CrmProvider({ children }: { children: ReactNode }) {
     [
       customers,
       motorcycles,
-      customerSales,
       workOrders,
+      loading,
+      error,
+      refresh,
       addCustomer,
       addMotorcycle,
       addWorkOrder,
       updateWorkOrder,
       updateWorkOrderStatus,
-      addWorkOrderPart,
       getCustomerById,
       getMotorcycleById,
       getMotorcyclesByCustomer,
-      getSalesByCustomer,
       getWorkOrdersByCustomer,
       getWorkOrderById,
       getActiveWorkOrders

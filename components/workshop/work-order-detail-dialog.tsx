@@ -40,6 +40,7 @@ export function WorkOrderDetailDialog({ order, open, onOpenChange }: WorkOrderDe
   const [status, setStatus] = useState<WorkOrderStatus>("En espera");
   const [laborCost, setLaborCost] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const syncFromOrder = (current: WorkOrder) => {
     setObservations(current.observations ?? "");
@@ -69,21 +70,26 @@ export function WorkOrderDetailDialog({ order, open, onOpenChange }: WorkOrderDe
     onOpenChange(next);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const parsedLabor = laborCost.trim() === "" ? undefined : Number(laborCost);
 
     if (parsedLabor !== undefined && (!Number.isFinite(parsedLabor) || parsedLabor < 0)) {
       return;
     }
 
-    updateWorkOrder(order.id, {
-      status,
-      observations,
-      mechanic,
-      laborCost: parsedLabor
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    try {
+      await updateWorkOrder(order.id, {
+        status,
+        observations,
+        mechanic,
+        laborCost: parsedLabor
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

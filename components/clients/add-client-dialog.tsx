@@ -41,6 +41,7 @@ export function AddClientDialog({ trigger }: AddClientDialogProps) {
   const [initialBalance, setInitialBalance] = useState("");
   const [motorcycles, setMotorcycles] = useState<MotoForm[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
     setName("");
@@ -72,7 +73,7 @@ export function AddClientDialog({ trigger }: AddClientDialogProps) {
     setError(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!name.trim()) {
@@ -104,26 +105,33 @@ export function AddClientDialog({ trigger }: AddClientDialogProps) {
       }
     }
 
-    addCustomer({
-      name,
-      phone,
-      email: email || undefined,
-      notes: notes || undefined,
-      accountEnabled,
-      initialBalance: accountEnabled ? balance : 0,
-      motorcycles:
-        validMotorcycles.length > 0
-          ? validMotorcycles.map(({ brandModel, plate, year, notes: motoNotes }) => ({
-              brandModel,
-              plate,
-              year,
-              notes: motoNotes
-            }))
-          : undefined
-    });
+    setSaving(true);
+    try {
+      await addCustomer({
+        name,
+        phone,
+        email: email || undefined,
+        notes: notes || undefined,
+        accountEnabled,
+        initialBalance: accountEnabled ? balance : 0,
+        motorcycles:
+          validMotorcycles.length > 0
+            ? validMotorcycles.map(({ brandModel, plate, year, notes: motoNotes }) => ({
+                brandModel,
+                plate,
+                year,
+                notes: motoNotes
+              }))
+            : undefined
+      });
 
-    setOpen(false);
-    resetForm();
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el cliente.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

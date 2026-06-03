@@ -25,6 +25,7 @@ export function AddSupplierDialog() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
     setName("");
@@ -39,7 +40,7 @@ export function AddSupplierDialog() {
     if (!nextOpen) resetForm();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const trimmedName = name.trim();
@@ -48,15 +49,22 @@ export function AddSupplierDialog() {
       return;
     }
 
-    addSupplier({
-      name: trimmedName,
-      contact: contact.trim() || undefined,
-      phone: phone.trim() || undefined,
-      email: email.trim() || undefined
-    });
+    setSaving(true);
+    try {
+      await addSupplier({
+        name: trimmedName,
+        contact: contact.trim() || undefined,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined
+      });
 
-    setOpen(false);
-    resetForm();
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el proveedor.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

@@ -4,54 +4,38 @@ import { useCallback } from "react";
 
 import { useCrm } from "@/contexts/crm-context";
 import { useInventory } from "@/contexts/inventory-context";
-import { canAddPartsToWorkOrder } from "@/lib/crm";
+import { api } from "@/lib/api/client";
+import type { WorkOrder } from "@/types/crm";
 
 type OperationResult = { ok: true } | { ok: false; error: string };
 
 export function useWorkOrderOperations() {
-  const { getWorkOrderById, getCustomerById, addWorkOrderPart } = useCrm();
-  const { getProductById, consumeProductStock, products } = useInventory();
+  const { getWorkOrderById, refresh: refreshCrm } = useCrm();
+  const { refresh: refreshInventory, products } = useInventory();
 
   const addPartToWorkOrder = useCallback(
-    (orderId: string, productId: string, quantity: number): OperationResult => {
+    async (orderId: string, productId: string, quantity: number): Promise<OperationResult> => {
       const order = getWorkOrderById(orderId);
       if (!order) {
         return { ok: false, error: "Orden de trabajo no encontrada." };
       }
 
-      if (!canAddPartsToWorkOrder(order.status)) {
+      try {
+        await api.post<WorkOrder>(`/api/work-orders/${orderId}/parts`, {
+          productId,
+          quantity
+        });
+
+        await Promise.all([refreshCrm(), refreshInventory()]);
+        return { ok: true };
+      } catch (err) {
         return {
           ok: false,
-          error: "Los repuestos solo pueden agregarse desde «En reparación» en adelante."
+          error: err instanceof Error ? err.message : "No se pudo agregar el repuesto."
         };
       }
-
-      const product = getProductById(productId);
-      if (!product) {
-        return { ok: false, error: "Producto no encontrado en inventario." };
-      }
-
-      const customer = getCustomerById(order.customerId);
-      const consumeResult = consumeProductStock(productId, quantity, {
-        workOrderId: orderId,
-        detail: `Uso en taller — ${orderId}${customer ? ` (${customer.name})` : ""}`
-      });
-
-      if (!consumeResult.ok) {
-        return consumeResult;
-      }
-
-      addWorkOrderPart(orderId, {
-        productId,
-        productName: product.name,
-        internalCode: product.internalCode,
-        quantity,
-        unitPrice: product.publicPrice
-      });
-
-      return { ok: true };
     },
-    [getWorkOrderById, getCustomerById, getProductById, consumeProductStock, addWorkOrderPart]
+    [getWorkOrderById, refreshCrm, refreshInventory]
   );
 
   const availableProducts = products.filter((product) => product.stock > 0);

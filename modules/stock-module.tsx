@@ -40,7 +40,8 @@ export function StockModule() {
     suppliers,
     getCategoryById,
     getSubcategoryById,
-    getSupplierById
+    getSupplierById,
+    getProductById
   } = useInventory();
 
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -48,7 +49,7 @@ export function StockModule() {
   const [categoryFilter, setCategoryFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState<StockStatus | "todos">("todos");
   const [compatibilityFilter, setCompatibilityFilter] = useState<string>("todos");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
@@ -92,9 +93,11 @@ export function StockModule() {
   ]);
 
   const openProductDetail = (product: Product) => {
-    setSelectedProduct(product);
+    setSelectedProductId(product.id);
     setDetailOpen(true);
   };
+
+  const selectedProduct = selectedProductId ? getProductById(selectedProductId) ?? null : null;
 
   return (
     <ModuleShell
@@ -270,6 +273,7 @@ export function StockModule() {
         product={selectedProduct}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+        onDeleted={() => setSelectedProductId(null)}
       />
     </ModuleShell>
   );

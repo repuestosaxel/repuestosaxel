@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { useCrm } from "@/contexts/crm-context";
+import { useSales } from "@/contexts/sales-context";
+import { getSaleItemsSummary } from "@/lib/sales";
 import { getAccountBalanceLabel, getAccountBalanceState } from "@/lib/crm";
 import { money } from "@/lib/utils";
 import type { Customer } from "@/types/crm";
@@ -24,16 +26,13 @@ type ClientDetailDialogProps = {
 };
 
 export function ClientDetailDialog({ customer, open, onOpenChange }: ClientDetailDialogProps) {
-  const {
-    getMotorcyclesByCustomer,
-    getSalesByCustomer,
-    getWorkOrdersByCustomer
-  } = useCrm();
+  const { getMotorcyclesByCustomer, getWorkOrdersByCustomer } = useCrm();
+  const { getSalesByCustomer } = useSales();
 
   if (!customer) return null;
 
   const motorcycles = getMotorcyclesByCustomer(customer.id);
-  const sales = getSalesByCustomer(customer.id);
+  const sales = customer ? getSalesByCustomer(customer.id) : [];
   const workOrders = getWorkOrdersByCustomer(customer.id);
   const balanceState = getAccountBalanceState(customer.balance);
 
@@ -157,12 +156,12 @@ export function ClientDetailDialog({ customer, open, onOpenChange }: ClientDetai
                       <p className="font-display text-sm font-bold text-white">{sale.reference}</p>
                       <StatusBadge status={sale.status} />
                     </div>
-                    <p className="font-display font-bold text-white">{money(sale.amount)}</p>
+                    <p className="font-display font-bold text-white">{money(sale.total)}</p>
                   </div>
-                  <p className="mt-2 text-sm text-white/58">{sale.items}</p>
+                  <p className="mt-2 text-sm text-white/58">{getSaleItemsSummary(sale.items)}</p>
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-white/40">
-                    <span>{sale.date}</span>
-                    <span>{sale.method}</span>
+                    <span>{sale.createdAt}</span>
+                    <span>{sale.paymentMethod}</span>
                   </div>
                 </div>
               ))}

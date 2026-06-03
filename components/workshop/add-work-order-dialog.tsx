@@ -29,6 +29,7 @@ export function AddWorkOrderDialog({ trigger }: AddWorkOrderDialogProps) {
   const [observations, setObservations] = useState("");
   const [mechanic, setMechanic] = useState<string>(WORKSHOP_MECHANICS[0]);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const motorcycleOptions = useMemo(
     () => (customerId ? getMotorcyclesByCustomer(customerId) : []),
@@ -65,7 +66,7 @@ export function AddWorkOrderDialog({ trigger }: AddWorkOrderDialogProps) {
     setError(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!customerId) {
@@ -83,16 +84,23 @@ export function AddWorkOrderDialog({ trigger }: AddWorkOrderDialogProps) {
       return;
     }
 
-    addWorkOrder({
-      customerId,
-      motorcycleId: motorcycleId || undefined,
-      problem,
-      observations: observations || undefined,
-      mechanic
-    });
+    setSaving(true);
+    try {
+      await addWorkOrder({
+        customerId,
+        motorcycleId: motorcycleId || undefined,
+        problem,
+        observations: observations || undefined,
+        mechanic
+      });
 
-    setOpen(false);
-    resetForm();
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear la orden.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectedCustomer = customers.find((c) => c.id === customerId);

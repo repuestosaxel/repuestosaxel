@@ -25,6 +25,7 @@ export function AddSubcategoryDialog() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
     setCategoryId(categories[0]?.id ?? "");
@@ -38,7 +39,7 @@ export function AddSubcategoryDialog() {
     if (nextOpen) resetForm();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!categoryId) {
@@ -52,14 +53,21 @@ export function AddSubcategoryDialog() {
       return;
     }
 
-    addSubcategory({
-      categoryId,
-      name: trimmedName,
-      description: description.trim() || undefined
-    });
+    setSaving(true);
+    try {
+      await addSubcategory({
+        categoryId,
+        name: trimmedName,
+        description: description.trim() || undefined
+      });
 
-    setOpen(false);
-    resetForm();
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear la subcategoría.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

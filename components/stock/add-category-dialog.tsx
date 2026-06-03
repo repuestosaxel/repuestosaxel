@@ -23,6 +23,7 @@ export function AddCategoryDialog() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
     setName("");
@@ -35,7 +36,7 @@ export function AddCategoryDialog() {
     if (!nextOpen) resetForm();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const trimmedName = name.trim();
@@ -44,13 +45,20 @@ export function AddCategoryDialog() {
       return;
     }
 
-    addCategory({
-      name: trimmedName,
-      description: description.trim() || undefined
-    });
+    setSaving(true);
+    try {
+      await addCategory({
+        name: trimmedName,
+        description: description.trim() || undefined
+      });
 
-    setOpen(false);
-    resetForm();
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear la categoría.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -102,7 +110,7 @@ export function AddCategoryDialog() {
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Guardar categoría</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar categoría"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,5 +1,3 @@
-import type { SaleStatus } from "@/data/mock-data";
-
 export type WorkOrderStatus =
   | "En espera"
   | "Diagnóstico"
@@ -47,17 +45,6 @@ export type Motorcycle = {
   notes?: string;
 };
 
-export type CustomerSale = {
-  id: string;
-  customerId: string;
-  reference: string;
-  date: string;
-  amount: number;
-  method: string;
-  status: SaleStatus;
-  items: string;
-};
-
 export type WorkOrderPart = {
   id: string;
   productId: string;
@@ -88,6 +75,25 @@ export type CreateMotorcycleInput = {
   plate: string;
   year?: number;
   notes?: string;
+};
+
+export type CrmSnapshot = {
+  customers: Customer[];
+  motorcycles: Motorcycle[];
+  workOrders: WorkOrder[];
+};
+
+export type UpdateCustomerInput = {
+  name?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  accountEnabled?: boolean;
+  balance?: number;
+};
+
+export type CreateMotorcycleWithCustomerInput = CreateMotorcycleInput & {
+  customerId: string;
 };
 
 export type CreateCustomerInput = {
@@ -123,6 +129,11 @@ export type AddWorkOrderPartInput = {
   internalCode: string;
   quantity: number;
   unitPrice: number;
+};
+
+export type AddWorkOrderPartPayload = {
+  productId: string;
+  quantity: number;
 };
 
 export type ClientFilter = "todos" | "con_motos" | "solo_repuestos" | "cuenta_corriente";

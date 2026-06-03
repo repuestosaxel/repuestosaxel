@@ -59,6 +59,13 @@ export type ProductHistoryEntry = {
   reference?: string;
 };
 
+export type InventorySnapshot = {
+  categories: Category[];
+  subcategories: Subcategory[];
+  suppliers: Supplier[];
+  products: Product[];
+};
+
 export type CreateCategoryInput = {
   name: string;
   description?: string;
@@ -92,7 +99,23 @@ export type CreateProductInput = {
   compatibility: CompatibilityType[];
 };
 
+export type UpdateProductInput = {
+  internalCode?: string;
+  name?: string;
+  description?: string;
+  categoryId?: string;
+  subcategoryId?: string;
+  supplierId?: string;
+  imageUrl?: string;
+  purchasePrice?: number;
+  publicPrice?: number;
+  stock?: number;
+  min?: number;
+  compatibility?: CompatibilityType[];
+};
+
 export const COMPATIBILITY_OPTIONS: CompatibilityType[] = [
+  "Motocicletas",
   "2 tiempos",
   "4 tiempos"
 ];

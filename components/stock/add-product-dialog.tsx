@@ -58,6 +58,7 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState(DEFAULT_PRODUCT_IMAGE);
 
   const subcategoryOptions = useMemo(
@@ -139,7 +140,7 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const purchasePrice = Number(form.purchasePrice);
@@ -202,23 +203,30 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
       return;
     }
 
-    addProduct({
-      internalCode: form.internalCode,
-      name: form.name,
-      description: form.description,
-      categoryId: form.categoryId,
-      subcategoryId: form.subcategoryId,
-      supplierId: form.supplierId,
-      imageUrl: form.imageUrl || DEFAULT_PRODUCT_IMAGE,
-      purchasePrice,
-      publicPrice,
-      stock,
-      min,
-      compatibility: form.compatibility
-    });
+    setSaving(true);
+    try {
+      await addProduct({
+        internalCode: form.internalCode,
+        name: form.name,
+        description: form.description,
+        categoryId: form.categoryId,
+        subcategoryId: form.subcategoryId,
+        supplierId: form.supplierId,
+        imageUrl: form.imageUrl || DEFAULT_PRODUCT_IMAGE,
+        purchasePrice,
+        publicPrice,
+        stock,
+        min,
+        compatibility: form.compatibility
+      });
 
-    setOpen(false);
-    resetForm();
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el producto.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
