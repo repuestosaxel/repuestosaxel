@@ -1,6 +1,9 @@
 // Esquema PostgreSQL (Supabase) — AYG Motor Racing
 // Ejecutar: npx prisma migrate dev
-// Requiere: POSTGRES_PRISMA_URL en .env
+// Requiere en .env:
+//   POSTGRES_PRISMA_URL  → conexión pooled (app / Prisma en runtime)
+//   POSTGRES_URL_NON_POOLING → conexión directa (migrate / db push)
+// NO usar SUPABASE_URL (https://...) ni NEXT_PUBLIC_* aquí — Prisma habla PostgreSQL, no la API REST.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,8 +11,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("NEXT_PUBLIC_SUPABASE_URL")
-  directUrl = env("NEXT_PUBLIC_SUPABASE_URL")
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
