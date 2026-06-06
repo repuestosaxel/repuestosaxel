@@ -1,17 +1,14 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardOverviewSkeleton } from "@/components/dashboard/data-loading";
+import { ModuleShell } from "@/components/dashboard/module-shell";
 
 export default function DashboardLoading() {
   return (
-    <main className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-[1500px] space-y-5">
-        <Skeleton className="h-16 w-2/3" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-40" />
-          ))}
-        </div>
-        <Skeleton className="h-80" />
-      </div>
-    </main>
+    <ModuleShell
+      eyebrow="Centro de comando"
+      title="Performance del negocio en tiempo real"
+      description="Una vista ejecutiva para controlar ventas, stock, taller y flujo financiero con foco en velocidad y decisión."
+    >
+      <DashboardOverviewSkeleton />
+    </ModuleShell>
   );
 }

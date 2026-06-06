@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 
 import { ChartCard } from "@/components/dashboard/chart-card";
-import { EmptyState } from "@/components/dashboard/empty-state";
+import { ContextBanner } from "@/components/dashboard/context-banner";
+import { DashboardOverviewSkeleton } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,13 @@ export function DashboardOverview() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const loadMetrics = () => {
+    setLoading(true);
+    setError(null);
+    setReloadKey((current) => current + 1);
+  };
 
   useEffect(() => {
     let active = true;
@@ -71,20 +79,16 @@ export function DashboardOverview() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   if (loading) {
     return (
       <ModuleShell
         eyebrow="Centro de comando"
         title="Performance del negocio en tiempo real"
-        description="Cargando métricas desde la base de datos..."
+        description="Una vista ejecutiva para controlar ventas, stock, taller y flujo financiero con foco en velocidad y decisión."
       >
-        <EmptyState
-          title="Sincronizando datos"
-          description="Obteniendo ventas, stock y taller..."
-          action="Cargando"
-        />
+        <DashboardOverviewSkeleton />
       </ModuleShell>
     );
   }
@@ -94,12 +98,11 @@ export function DashboardOverview() {
       <ModuleShell
         eyebrow="Centro de comando"
         title="Performance del negocio en tiempo real"
-        description="No se pudieron cargar las métricas."
+        description="Una vista ejecutiva para controlar ventas, stock, taller y flujo financiero con foco en velocidad y decisión."
       >
-        <EmptyState
-          title="Error al cargar dashboard"
-          description={error ?? "Verificá la conexión a la base de datos."}
-          action="Reintentar"
+        <ContextBanner
+          error={error ?? "Verificá la conexión a la base de datos."}
+          onRetry={loadMetrics}
         />
       </ModuleShell>
     );

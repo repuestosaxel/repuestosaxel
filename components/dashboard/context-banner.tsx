@@ -1,32 +1,16 @@
 "use client";
 
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 type ContextBannerProps = {
-  loading: boolean;
   error: string | null;
   onRetry?: () => void;
-  label?: string;
 };
 
-export function ContextBanner({
-  loading,
-  error,
-  onRetry,
-  label = "datos"
-}: ContextBannerProps) {
-  if (loading) {
-    return (
-      <Card className="flex items-center gap-3 border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/58">
-        <Loader2 className="size-4 shrink-0 animate-spin text-racing-red" />
-        Cargando {label}...
-      </Card>
-    );
-  }
-
+export function ContextBanner({ error, onRetry }: ContextBannerProps) {
   if (!error) return null;
 
   return (

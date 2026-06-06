@@ -8,7 +8,7 @@ import { ProductCard } from "@/components/stock/product-card";
 import { ProductDetailDialog } from "@/components/stock/product-detail-dialog";
 import { StockFiltersPanel } from "@/components/stock/stock-filters-panel";
 import { StockStats } from "@/components/stock/stock-stats";
-import { ContextBanner } from "@/components/dashboard/context-banner";
+import { ModuleDataGate, StockModuleSkeleton } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ProductImage } from "@/components/stock/product-image";
@@ -114,8 +114,12 @@ export function StockModule() {
         />
       }
     >
-      <ContextBanner loading={loading} error={error} onRetry={refresh} label="inventario" />
-
+      <ModuleDataGate
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        skeleton={<StockModuleSkeleton />}
+      >
       <StockStats />
 
       <StockFiltersPanel
@@ -238,6 +242,7 @@ export function StockModule() {
         onOpenChange={setDetailOpen}
         onDeleted={() => setSelectedProductId(null)}
       />
+      </ModuleDataGate>
     </ModuleShell>
   );
 }

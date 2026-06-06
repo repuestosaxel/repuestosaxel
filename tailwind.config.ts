@@ -39,10 +39,15 @@ const config: Config = {
         "pulse-line": {
           "0%, 100%": { transform: "translateX(-40%)", opacity: "0.25" },
           "50%": { transform: "translateX(80%)", opacity: "0.8" }
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" }
         }
       },
       animation: {
-        "pulse-line": "pulse-line 3.4s ease-in-out infinite"
+        "pulse-line": "pulse-line 3.4s ease-in-out infinite",
+        shimmer: "shimmer 1.6s ease-in-out infinite"
       }
     }
   },

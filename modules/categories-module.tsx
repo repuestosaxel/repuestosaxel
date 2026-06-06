@@ -7,7 +7,12 @@ import { AddCategoryDialog } from "@/components/stock/add-category-dialog";
 import { AddSubcategoryDialog } from "@/components/stock/add-subcategory-dialog";
 import { EditCategoryDialog } from "@/components/stock/edit-category-dialog";
 import { EditSubcategoryDialog } from "@/components/stock/edit-subcategory-dialog";
-import { ContextBanner } from "@/components/dashboard/context-banner";
+import {
+  CategoryListSkeleton,
+  LoadingProgressStrip,
+  ModuleDataGate,
+  StatCardsSkeleton
+} from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -126,8 +131,18 @@ export function CategoriesModule() {
         </div>
       }
     >
-      <ContextBanner loading={loading} error={error} onRetry={refresh} label="categorías" />
-
+      <ModuleDataGate
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        skeleton={
+          <div className="space-y-5">
+            <LoadingProgressStrip />
+            <StatCardsSkeleton count={2} className="sm:grid-cols-2 xl:grid-cols-2" />
+            <CategoryListSkeleton items={3} />
+          </div>
+        }
+      >
       <div className="grid gap-4 sm:grid-cols-2">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
@@ -334,6 +349,7 @@ export function CategoriesModule() {
           if (!open) setEditingSubcategory(null);
         }}
       />
+      </ModuleDataGate>
     </ModuleShell>
   );
 }

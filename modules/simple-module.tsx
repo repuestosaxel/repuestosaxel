@@ -3,7 +3,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Save, Settings2 } from "lucide-react";
 
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { LoadingProgressStrip, SettingsFormSkeleton } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { ModalField } from "@/components/stock/product-modal-shell";
 import { Button } from "@/components/ui/button";
@@ -82,14 +84,32 @@ function SettingsPanel() {
     setSaved(false);
   };
 
+  const reloadSettings = () => {
+    setLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const data = await api.get<BusinessSetting[]>("/api/settings");
+        setSettings(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo cargar la configuración.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  };
+
   if (loading) {
     return (
       <ModuleShell
         eyebrow="Sistema"
         title="Configuración"
-        description="Parámetros del negocio almacenados en PostgreSQL."
+        description="Panel de parámetros comerciales, fiscales y operativos del negocio."
       >
-        <EmptyState title="Cargando ajustes" description="Obteniendo configuración del sistema..." action="Cargando" />
+        <div className="space-y-5">
+          <LoadingProgressStrip />
+          <SettingsFormSkeleton />
+        </div>
       </ModuleShell>
     );
   }
@@ -100,6 +120,8 @@ function SettingsPanel() {
       title="Configuración"
       description="Panel de parámetros comerciales, fiscales y operativos del negocio."
     >
+      <ContextBanner error={error} onRetry={reloadSettings} />
+
       {settings.length === 0 ? (
         <EmptyState
           title="Sin ajustes configurados"
@@ -137,11 +159,6 @@ function SettingsPanel() {
         <p className="mt-4 text-sm font-medium text-emerald-300">Configuración guardada correctamente.</p>
       ) : null}
 
-      {error ? (
-        <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      ) : null}
     </ModuleShell>
   );
 }

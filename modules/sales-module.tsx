@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { CreditCard, PackageCheck, Plus, ReceiptText, TrendingUp } from "lucide-react";
 
-import { ContextBanner } from "@/components/dashboard/context-banner";
+import { CatalogModuleSkeleton, ModuleDataGate } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -109,8 +109,12 @@ export function SalesModule() {
         />
       }
     >
-      <ContextBanner loading={loading} error={error} onRetry={refresh} label="ventas" />
-
+      <ModuleDataGate
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        skeleton={<CatalogModuleSkeleton statCount={4} filterPills={6} gridItems={5} />}
+      >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((metric) => (
           <StatCard key={metric.title} {...metric} />
@@ -220,6 +224,7 @@ export function SalesModule() {
       </Card>
 
       <SaleDetailDialog sale={selectedSale} open={detailOpen} onOpenChange={setDetailOpen} />
+      </ModuleDataGate>
     </ModuleShell>
   );
 }

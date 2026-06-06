@@ -5,7 +5,7 @@ import { Mail, Pencil, Phone, Trash2, Truck, UserRound } from "lucide-react";
 
 import { AddSupplierDialog } from "@/components/stock/add-supplier-dialog";
 import { EditSupplierDialog } from "@/components/stock/edit-supplier-dialog";
-import { ContextBanner } from "@/components/dashboard/context-banner";
+import { CatalogModuleSkeleton, ModuleDataGate } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -89,8 +89,18 @@ export function SuppliersModule() {
       description="Directorio de proveedores como entidad independiente. Cada producto referencia un proveedor para rastrear compras, ingresos y costos."
       action={<AddSupplierDialog />}
     >
-      <ContextBanner loading={loading} error={error} onRetry={refresh} label="proveedores" />
-
+      <ModuleDataGate
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        skeleton={
+          <CatalogModuleSkeleton
+            statCount={2}
+            statColumns="sm:grid-cols-2"
+            gridItems={6}
+          />
+        }
+      >
       <div className="grid gap-4 sm:grid-cols-2">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
@@ -225,6 +235,7 @@ export function SuppliersModule() {
           if (!open) setEditingSupplier(null);
         }}
       />
+      </ModuleDataGate>
     </ModuleShell>
   );
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ClipboardCheck, Plus, Wrench } from "lucide-react";
 
-import { ContextBanner } from "@/components/dashboard/context-banner";
+import { CatalogModuleSkeleton, ModuleDataGate } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -117,8 +117,19 @@ export function WorkshopModule() {
         />
       }
     >
-      <ContextBanner loading={loading} error={error} onRetry={refresh} label="órdenes de taller" />
-
+      <ModuleDataGate
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        skeleton={
+          <CatalogModuleSkeleton
+            statCount={3}
+            statColumns="sm:grid-cols-2 xl:grid-cols-3"
+            filterPills={5}
+            gridItems={6}
+          />
+        }
+      >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
@@ -194,6 +205,7 @@ export function WorkshopModule() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
       />
+      </ModuleDataGate>
     </ModuleShell>
   );
 }

@@ -7,7 +7,7 @@ import { AddClientDialog } from "@/components/clients/add-client-dialog";
 import { ClientCard } from "@/components/clients/client-card";
 import { ClientDetailDialog } from "@/components/clients/client-detail-dialog";
 import { AccountBalanceBadge } from "@/components/clients/account-balance-badge";
-import { ContextBanner } from "@/components/dashboard/context-banner";
+import { CatalogModuleSkeleton, ModuleDataGate } from "@/components/dashboard/data-loading";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -120,8 +120,19 @@ export function ClientsModule() {
         />
       }
     >
-      <ContextBanner loading={loading} error={error} onRetry={refresh} label="clientes" />
-
+      <ModuleDataGate
+        loading={loading}
+        error={error}
+        onRetry={refresh}
+        skeleton={
+          <CatalogModuleSkeleton
+            statCount={3}
+            statColumns="sm:grid-cols-2 xl:grid-cols-3"
+            filterPills={4}
+            gridItems={6}
+          />
+        }
+      >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
@@ -237,6 +248,7 @@ export function ClientsModule() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
       />
+      </ModuleDataGate>
     </ModuleShell>
   );
 }
