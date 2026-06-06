@@ -1,30 +1,35 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail, Pencil, Phone, Search, Trash2, Truck, UserRound } from "lucide-react";
+import { Mail, Pencil, Phone, Trash2, Truck, UserRound } from "lucide-react";
 
 import { AddSupplierDialog } from "@/components/stock/add-supplier-dialog";
 import { EditSupplierDialog } from "@/components/stock/edit-supplier-dialog";
 import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
+import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useInventory } from "@/contexts/inventory-context";
+import { useEffectiveSearch } from "@/hooks/use-effective-search";
 import { cn } from "@/lib/utils";
 import type { Supplier } from "@/types/inventory";
 
 export function SuppliersModule() {
   const { suppliers, products, loading, error, refresh, deleteSupplier } = useInventory();
   const [search, setSearch] = useState("");
+  const { effectiveQuery, searchFieldValue, onSearchFieldChange } = useEffectiveSearch(
+    search,
+    setSearch
+  );
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const filteredSuppliers = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = effectiveQuery;
     if (!query) return suppliers;
 
     return suppliers.filter(
@@ -35,7 +40,7 @@ export function SuppliersModule() {
         supplier.phone?.toLowerCase().includes(query) ||
         supplier.email?.toLowerCase().includes(query)
     );
-  }, [suppliers, search]);
+  }, [suppliers, effectiveQuery]);
 
   const productCountBySupplier = useMemo(() => {
     const counts = new Map<string, number>();
@@ -98,16 +103,13 @@ export function SuppliersModule() {
         </p>
       ) : null}
 
-      <Card className="p-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/36" />
-          <Input
-            className="pl-10"
-            placeholder="Buscar por nombre, contacto o email..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
+      <Card className="p-4 sm:p-5">
+        <SearchField
+          className="w-full max-w-xl"
+          value={searchFieldValue}
+          onChange={onSearchFieldChange}
+          placeholder="Buscar por nombre, contacto o email..."
+        />
       </Card>
 
       {filteredSuppliers.length === 0 ? (

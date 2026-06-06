@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LayoutGrid, LayoutList, Plus, Search, Users } from "lucide-react";
+import { LayoutGrid, LayoutList, Plus, Users } from "lucide-react";
 
 import { AddClientDialog } from "@/components/clients/add-client-dialog";
 import { ClientCard } from "@/components/clients/client-card";
@@ -9,11 +9,12 @@ import { ClientDetailDialog } from "@/components/clients/client-detail-dialog";
 import { AccountBalanceBadge } from "@/components/clients/account-balance-badge";
 import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
+import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useCrm } from "@/contexts/crm-context";
+import { useEffectiveSearch } from "@/hooks/use-effective-search";
 import { getAccountBalanceState } from "@/lib/crm";
 import { cn } from "@/lib/utils";
 import type { ClientFilter, Customer } from "@/types/crm";
@@ -30,13 +31,17 @@ const filters: { id: ClientFilter; label: string }[] = [
 export function ClientsModule() {
   const { customers, motorcycles, loading, error, refresh, getMotorcyclesByCustomer } = useCrm();
   const [search, setSearch] = useState("");
+  const { effectiveQuery, searchFieldValue, onSearchFieldChange } = useEffectiveSearch(
+    search,
+    setSearch
+  );
   const [filter, setFilter] = useState<ClientFilter>("todos");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const filteredCustomers = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = effectiveQuery;
 
     return customers.filter((customer) => {
       const motos = getMotorcyclesByCustomer(customer.id);
@@ -55,7 +60,7 @@ export function ClientsModule() {
 
       return matchesSearch && matchesFilter;
     });
-  }, [customers, search, filter, getMotorcyclesByCustomer]);
+  }, [customers, effectiveQuery, filter, getMotorcyclesByCustomer]);
 
   const stats = useMemo(() => {
     const withAccount = customers.filter((c) => c.accountEnabled).length;
@@ -123,17 +128,14 @@ export function ClientsModule() {
         ))}
       </div>
 
-      <Card className="space-y-4 p-4">
+      <Card className="space-y-4 p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/36" />
-            <Input
-              className="pl-10"
-              placeholder="Buscar por nombre, teléfono o ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchField
+            className="w-full max-w-xl"
+            value={searchFieldValue}
+            onChange={onSearchFieldChange}
+            placeholder="Buscar por nombre, teléfono o ID..."
+          />
           <div className="flex gap-2">
             <Button
               size="icon"
@@ -154,7 +156,7 @@ export function ClientsModule() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
           {filters.map((item) => (
             <button
               key={item.id}

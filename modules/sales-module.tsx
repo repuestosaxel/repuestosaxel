@@ -1,42 +1,55 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, PackageCheck, Plus, ReceiptText, Search, TrendingUp } from "lucide-react";
+import { CreditCard, PackageCheck, Plus, ReceiptText, TrendingUp } from "lucide-react";
 
 import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
+import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { NewSaleDialog } from "@/components/sales/new-sale-dialog";
 import { SaleDetailDialog } from "@/components/sales/sale-detail-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useSales } from "@/contexts/sales-context";
+import { useEffectiveSearch } from "@/hooks/use-effective-search";
 import { useFinanceMetrics } from "@/hooks/use-finance-metrics";
 import { getSaleItemsSummary } from "@/lib/sales";
 import { cn, money } from "@/lib/utils";
-import type { Sale } from "@/types/sales";
+import type { PaymentMethod, Sale, SaleStatus } from "@/types/sales";
+import { PAYMENT_METHODS, SALE_STATUSES } from "@/types/sales";
 
 export function SalesModule() {
   const { sales, loading, error, refresh, getSaleById } = useSales();
   const metrics = useFinanceMetrics();
   const [search, setSearch] = useState("");
+  const { effectiveQuery, searchFieldValue, onSearchFieldChange } = useEffectiveSearch(
+    search,
+    setSearch
+  );
+  const [statusFilter, setStatusFilter] = useState<SaleStatus | "todos">("todos");
+  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "todos">("todos");
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const filteredSales = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return sales;
+    return sales.filter((sale) => {
+      const matchesSearch =
+        !effectiveQuery ||
+        sale.reference.toLowerCase().includes(effectiveQuery) ||
+        sale.customerName?.toLowerCase().includes(effectiveQuery) ||
+        sale.id.toLowerCase().includes(effectiveQuery) ||
+        getSaleItemsSummary(sale.items).toLowerCase().includes(effectiveQuery) ||
+        sale.paymentMethod.toLowerCase().includes(effectiveQuery) ||
+        sale.status.toLowerCase().includes(effectiveQuery);
 
-    return sales.filter(
-      (sale) =>
-        sale.reference.toLowerCase().includes(query) ||
-        sale.customerName?.toLowerCase().includes(query) ||
-        getSaleItemsSummary(sale.items).toLowerCase().includes(query) ||
-        sale.paymentMethod.toLowerCase().includes(query)
-    );
-  }, [sales, search]);
+      const matchesStatus = statusFilter === "todos" || sale.status === statusFilter;
+      const matchesPayment = paymentFilter === "todos" || sale.paymentMethod === paymentFilter;
+
+      return matchesSearch && matchesStatus && matchesPayment;
+    });
+  }, [sales, effectiveQuery, statusFilter, paymentFilter]);
 
   const statCards = [
     {
@@ -104,16 +117,47 @@ export function SalesModule() {
         ))}
       </div>
 
-      <Card className="p-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/36" />
-          <Input
-            className="pl-10"
-            placeholder="Buscar por referencia, cliente, producto o pago..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+      <Card className="space-y-3 p-4 sm:p-5">
+        <SearchField
+          className="w-full max-w-xl"
+          value={searchFieldValue}
+          onChange={onSearchFieldChange}
+          placeholder="Buscar por referencia, cliente, producto o pago..."
+        />
+        <div className="flex flex-wrap gap-2">
+          <FilterPill
+            active={statusFilter === "todos"}
+            label="Estado: Todos"
+            onClick={() => setStatusFilter("todos")}
           />
+          {SALE_STATUSES.map((status) => (
+            <FilterPill
+              key={status}
+              active={statusFilter === status}
+              label={status}
+              onClick={() => setStatusFilter(status)}
+            />
+          ))}
         </div>
+        <div className="flex flex-wrap gap-2">
+          <FilterPill
+            active={paymentFilter === "todos"}
+            label="Pago: Todos"
+            onClick={() => setPaymentFilter("todos")}
+          />
+          {PAYMENT_METHODS.map((method) => (
+            <FilterPill
+              key={method}
+              active={paymentFilter === method}
+              label={method}
+              onClick={() => setPaymentFilter(method)}
+            />
+          ))}
+        </div>
+        <p className="text-xs text-white/40">
+          <span className="font-bold text-white">{filteredSales.length}</span> de {sales.length}{" "}
+          ventas
+        </p>
       </Card>
 
       <Card className="overflow-hidden">
@@ -135,6 +179,13 @@ export function SalesModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/8">
+                {filteredSales.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-white/48">
+                      No hay ventas que coincidan con los filtros.
+                    </td>
+                  </tr>
+                ) : null}
                 {filteredSales.map((sale) => (
                   <tr
                     key={sale.id}
@@ -170,5 +221,31 @@ export function SalesModule() {
 
       <SaleDetailDialog sale={selectedSale} open={detailOpen} onOpenChange={setDetailOpen} />
     </ModuleShell>
+  );
+}
+
+function FilterPill({
+  active,
+  label,
+  onClick
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+        active
+          ? "border-racing-red bg-racing-red/20 text-white shadow-glow"
+          : "border-white/10 bg-white/[0.04] text-white/55 hover:border-white/20 hover:text-white"
+      )}
+      aria-pressed={active}
+    >
+      {label}
+    </button>
   );
 }

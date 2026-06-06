@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 
-import { BrandLogo } from "@/components/brand-logo";
+import { SidebarBrand } from "@/components/dashboard/sidebar-brand";
 import { Button } from "@/components/ui/button";
 import { navItems, type ModuleId } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -30,8 +30,8 @@ export function Sidebar({ active, onChange, open, onClose }: SidebarProps) {
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="mb-6 flex items-center justify-between">
-          <BrandLogo />
+        <div className="mb-5 flex items-start justify-between gap-2">
+          <SidebarBrand />
           <Button className="lg:hidden" size="icon" variant="ghost" onClick={onClose}>
             <X />
           </Button>

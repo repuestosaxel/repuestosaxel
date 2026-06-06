@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { GlobalSearchProvider } from "@/contexts/global-search-context";
 import { InventoryProvider } from "@/contexts/inventory-context";
 import { CrmProvider } from "@/contexts/crm-context";
 import { SalesProvider } from "@/contexts/sales-context";
@@ -38,6 +39,7 @@ export function DashboardClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <GlobalSearchProvider>
     <InventoryProvider>
       <CrmProvider>
         <SalesProvider>
@@ -52,7 +54,11 @@ export function DashboardClient() {
                   onClose={() => setSidebarOpen(false)}
                 />
                 <div className="min-w-0 flex-1">
-                  <Topbar onMenu={() => setSidebarOpen(true)} />
+                  <Topbar
+                    activeModule={active}
+                    onMenu={() => setSidebarOpen(true)}
+                    onNavigate={setActive}
+                  />
                   <AnimatePresence mode="wait">
                     <motion.main
                       key={active}
@@ -71,5 +77,6 @@ export function DashboardClient() {
         </SalesProvider>
       </CrmProvider>
     </InventoryProvider>
+    </GlobalSearchProvider>
   );
 }

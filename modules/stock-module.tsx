@@ -1,16 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Grid3X3,
-  LayoutList,
-  Plus,
-  Search
-} from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { AddProductDialog } from "@/components/stock/add-product-dialog";
 import { ProductCard } from "@/components/stock/product-card";
 import { ProductDetailDialog } from "@/components/stock/product-detail-dialog";
+import { StockFiltersPanel } from "@/components/stock/stock-filters-panel";
 import { StockStats } from "@/components/stock/stock-stats";
 import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
@@ -18,21 +14,14 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ProductImage } from "@/components/stock/product-image";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useInventory } from "@/contexts/inventory-context";
+import { useEffectiveSearch } from "@/hooks/use-effective-search";
 import { getMarginPercent, getStockStatus } from "@/lib/inventory";
 import { money } from "@/lib/utils";
 import type { Product, StockStatus } from "@/types/inventory";
 import { COMPATIBILITY_OPTIONS } from "@/types/inventory";
 
 type ViewMode = "grid" | "list";
-
-const statusFilters: Array<StockStatus | "todos"> = [
-  "todos",
-  "En stock",
-  "Bajo stock",
-  "Sin stock"
-];
 
 export function StockModule() {
   const {
@@ -50,6 +39,13 @@ export function StockModule() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [search, setSearch] = useState("");
+  const {
+    effectiveQuery,
+    searchFieldValue,
+    onSearchFieldChange,
+    clearSearch,
+    isGlobalActive
+  } = useEffectiveSearch(search, setSearch);
   const [categoryFilter, setCategoryFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState<StockStatus | "todos">("todos");
   const [compatibilityFilter, setCompatibilityFilter] = useState<string>("todos");
@@ -57,8 +53,7 @@ export function StockModule() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    
+    const query = effectiveQuery;
 
     return products.filter((product) => {
       const category = getCategoryById(product.categoryId);
@@ -88,7 +83,7 @@ export function StockModule() {
     });
   }, [
     products,
-    search,
+    effectiveQuery,
     categoryFilter,
     statusFilter,
     compatibilityFilter,
@@ -123,67 +118,28 @@ export function StockModule() {
 
       <StockStats />
 
-      <Card className="space-y-4 p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/36" />
-            <Input
-              className="pl-10"
-              placeholder="Buscar por nombre, código, categoría o proveedor..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="icon"
-              variant={viewMode === "grid" ? "default" : "secondary"}
-              onClick={() => setViewMode("grid")}
-              aria-label="Vista grilla"
-            >
-              <Grid3X3 />
-            </Button>
-            <Button
-              size="icon"
-              variant={viewMode === "list" ? "default" : "secondary"}
-              onClick={() => setViewMode("list")}
-              aria-label="Vista lista"
-            >
-              <LayoutList />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <FilterChip
-            label="Categoría"
-            value={categoryFilter}
-            options={[
-              { value: "todos", label: "Todas" },
-              ...categories.map((c) => ({ value: c.id, label: c.name }))
-            ]}
-            onChange={setCategoryFilter}
-          />
-          <FilterChip
-            label="Estado"
-            value={statusFilter}
-            options={statusFilters.map((s) => ({
-              value: s,
-              label: s === "todos" ? "Todos" : s
-            }))}
-            onChange={(v) => setStatusFilter(v as StockStatus | "todos")}
-          />
-          <FilterChip
-            label="Compatibilidad"
-            value={compatibilityFilter}
-            options={[
-              { value: "todos", label: "Todas" },
-              ...COMPATIBILITY_OPTIONS.map((c) => ({ value: c, label: c }))
-            ]}
-            onChange={setCompatibilityFilter}
-          />
-        </div>
-      </Card>
+      <StockFiltersPanel
+        search={searchFieldValue}
+        onSearchChange={onSearchFieldChange}
+        isGlobalSearch={isGlobalActive}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        compatibilityFilter={compatibilityFilter}
+        onCompatibilityFilterChange={setCompatibilityFilter}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        categories={categories}
+        resultCount={filteredProducts.length}
+        totalCount={products.length}
+        onClearAll={() => {
+          clearSearch();
+          setCategoryFilter("todos");
+          setStatusFilter("todos");
+          setCompatibilityFilter("todos");
+        }}
+      />
 
       {viewMode === "grid" ? (
         filteredProducts.length === 0 ? (
@@ -273,7 +229,7 @@ export function StockModule() {
       )}
 
       <p className="text-center text-xs text-white/36">
-        {filteredProducts.length} de {products.length} productos · {suppliers.length} proveedores
+        {suppliers.length} proveedores en el sistema
       </p>
 
       <ProductDetailDialog
@@ -283,35 +239,6 @@ export function StockModule() {
         onDeleted={() => setSelectedProductId(null)}
       />
     </ModuleShell>
-  );
-}
-
-function FilterChip({
-  label,
-  value,
-  options,
-  onChange
-}: {
-  label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-      <span className="text-xs font-semibold text-white/40">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="bg-transparent text-sm font-semibold text-white focus:outline-none"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value} className="bg-[#0b0b0b]">
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }
 

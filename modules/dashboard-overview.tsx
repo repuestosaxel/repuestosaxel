@@ -28,6 +28,8 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useGlobalSearch } from "@/contexts/global-search-context";
+import { useGlobalSearchResults } from "@/hooks/use-global-search-results";
 import { api } from "@/lib/api/client";
 import { money } from "@/lib/utils";
 import type { DashboardMetrics } from "@/types/dashboard";
@@ -44,6 +46,8 @@ const tooltipStyle = {
 };
 
 export function DashboardOverview() {
+  const { query } = useGlobalSearch();
+  const searchResults = useGlobalSearchResults(query);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +106,19 @@ export function DashboardOverview() {
   }
 
   const { stats, weeklySales, topProducts, monthlyIncome, categorySales, activities } = metrics;
+  const searchQuery = query.trim().toLowerCase();
+
+  const filteredActivities = searchQuery
+    ? activities.filter(
+        (activity) =>
+          activity.title.toLowerCase().includes(searchQuery) ||
+          activity.detail.toLowerCase().includes(searchQuery)
+      )
+    : activities;
+
+  const filteredTopProducts = searchQuery
+    ? topProducts.filter((product) => product.name.toLowerCase().includes(searchQuery))
+    : topProducts;
 
   return (
     <ModuleShell
@@ -109,6 +126,23 @@ export function DashboardOverview() {
       title="Performance del negocio en tiempo real"
       description="Una vista ejecutiva para controlar ventas, stock, taller y flujo financiero con foco en velocidad y decisión."
     >
+      {searchQuery ? (
+        <Card className="border-racing-red/30 bg-racing-red/10 px-4 py-3">
+          <p className="text-sm text-white/80">
+            Buscando <span className="font-bold text-white">&quot;{query.trim()}&quot;</span>
+            {searchResults.length > 0 ? (
+              <>
+                {" "}
+                — {searchResults.length} coincidencia{searchResults.length === 1 ? "" : "s"} en el
+                sistema. Usá el buscador del header para ir al módulo.
+              </>
+            ) : (
+              <> — sin coincidencias en productos, clientes, ventas o taller.</>
+            )}
+          </p>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat, index) => (
           <StatCard
@@ -149,7 +183,7 @@ export function DashboardOverview() {
 
         <ChartCard title="Productos más vendidos" description="Ranking por unidades en el mes">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={topProducts} layout="vertical">
+            <BarChart data={filteredTopProducts} layout="vertical">
               <CartesianGrid stroke="#202020" strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" stroke="#8b8b8b" tickLine={false} axisLine={false} />
               <YAxis dataKey="name" type="category" width={108} stroke="#bdbdbd" tickLine={false} axisLine={false} />
@@ -204,13 +238,15 @@ export function DashboardOverview() {
           <CardTitle>Actividad reciente</CardTitle>
         </CardHeader>
         <CardContent>
-          {activities.length === 0 ? (
+          {filteredActivities.length === 0 ? (
             <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/42">
-              Sin actividad reciente registrada.
+              {searchQuery
+                ? "Ninguna actividad reciente coincide con la búsqueda."
+                : "Sin actividad reciente registrada."}
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {activities.map((activity) => (
+              {filteredActivities.map((activity) => (
                 <div key={`${activity.title}-${activity.time}`} className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
                   <p className="font-display text-sm font-bold text-white">{activity.title}</p>
                   <p className="mt-2 text-sm leading-5 text-white/54">{activity.detail}</p>

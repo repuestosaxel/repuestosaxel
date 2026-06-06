@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Layers2, Pencil, Search, Trash2 } from "lucide-react";
+import { Layers2, Pencil, Trash2 } from "lucide-react";
 
 import { AddCategoryDialog } from "@/components/stock/add-category-dialog";
 import { AddSubcategoryDialog } from "@/components/stock/add-subcategory-dialog";
@@ -9,11 +9,12 @@ import { EditCategoryDialog } from "@/components/stock/edit-category-dialog";
 import { EditSubcategoryDialog } from "@/components/stock/edit-subcategory-dialog";
 import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
+import { SearchField } from "@/components/dashboard/search-field";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useInventory } from "@/contexts/inventory-context";
+import { useEffectiveSearch } from "@/hooks/use-effective-search";
 import { cn } from "@/lib/utils";
 import type { Category, Subcategory } from "@/types/inventory";
 
@@ -31,6 +32,10 @@ export function CategoriesModule() {
   } = useInventory();
 
   const [search, setSearch] = useState("");
+  const { effectiveQuery, searchFieldValue, onSearchFieldChange } = useEffectiveSearch(
+    search,
+    setSearch
+  );
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
   const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState<string | null>(null);
@@ -39,7 +44,7 @@ export function CategoriesModule() {
   const [deleting, setDeleting] = useState(false);
 
   const filteredCategories = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = effectiveQuery;
     if (!query) return categories;
 
     return categories.filter((category) => {
@@ -56,7 +61,7 @@ export function CategoriesModule() {
         )
       );
     });
-  }, [categories, search, getSubcategoriesByCategory]);
+  }, [categories, effectiveQuery, getSubcategoriesByCategory]);
 
   const getProductCountByCategory = (categoryId: string) =>
     products.filter((product) => product.categoryId === categoryId).length;
@@ -135,16 +140,13 @@ export function CategoriesModule() {
         </p>
       ) : null}
 
-      <Card className="p-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/36" />
-          <Input
-            className="pl-10"
-            placeholder="Buscar categoría o subcategoría..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
+      <Card className="p-4 sm:p-5">
+        <SearchField
+          className="w-full max-w-xl"
+          value={searchFieldValue}
+          onChange={onSearchFieldChange}
+          placeholder="Buscar categoría o subcategoría..."
+        />
       </Card>
 
       <div className="space-y-4">
