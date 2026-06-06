@@ -7,6 +7,7 @@ import { AddClientDialog } from "@/components/clients/add-client-dialog";
 import { ClientCard } from "@/components/clients/client-card";
 import { ClientDetailDialog } from "@/components/clients/client-detail-dialog";
 import { AccountBalanceBadge } from "@/components/clients/account-balance-badge";
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ const filters: { id: ClientFilter; label: string }[] = [
 ];
 
 export function ClientsModule() {
-  const { customers, motorcycles, getMotorcyclesByCustomer } = useCrm();
+  const { customers, motorcycles, loading, error, refresh, getMotorcyclesByCustomer } = useCrm();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ClientFilter>("todos");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -114,6 +115,8 @@ export function ClientsModule() {
         />
       }
     >
+      <ContextBanner loading={loading} error={error} onRetry={refresh} label="clientes" />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />

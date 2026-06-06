@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ClipboardCheck, Plus, Search, Wrench } from "lucide-react";
 
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AddWorkOrderDialog } from "@/components/workshop/add-work-order-dialog";
@@ -21,7 +22,7 @@ import { WORK_ORDER_STATUSES } from "@/types/crm";
 type StatusFilter = WorkOrderStatus | "todos" | "activas";
 
 export function WorkshopModule() {
-  const { workOrders, getWorkOrderById, getCustomerById } = useCrm();
+  const { workOrders, loading, error, refresh, getWorkOrderById, getCustomerById } = useCrm();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("activas");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -111,6 +112,8 @@ export function WorkshopModule() {
         />
       }
     >
+      <ContextBanner loading={loading} error={error} onRetry={refresh} label="órdenes de taller" />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />

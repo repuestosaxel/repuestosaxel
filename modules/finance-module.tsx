@@ -24,10 +24,12 @@ import {
 } from "lucide-react";
 
 import { ChartCard } from "@/components/dashboard/chart-card";
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useFinance } from "@/contexts/finance-context";
 import { useFinanceMetrics } from "@/hooks/use-finance-metrics";
 import { cn, money, numberCompact } from "@/lib/utils";
 
@@ -49,6 +51,7 @@ const PAYMENT_ICONS: Record<string, typeof CircleDollarSign> = {
 };
 
 export function FinanceModule() {
+  const { loading, error, refresh } = useFinance();
   const metrics = useFinanceMetrics();
 
   const statCards = [
@@ -108,6 +111,8 @@ export function FinanceModule() {
       title="Dashboard financiero en tiempo real"
       description="Ingresos, egresos, rentabilidad, ventas por período, taller, productos top, métodos de pago y alertas operativas."
     >
+      <ContextBanner loading={loading} error={error} onRetry={refresh} label="finanzas" />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((metric) => (
           <StatCard key={metric.title} {...metric} />

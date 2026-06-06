@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { ImagePlus, PackagePlus } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import { PackagePlus } from "lucide-react";
 
-import { ProductImage } from "@/components/stock/product-image";
+import { ProductImagePicker } from "@/components/stock/product-image-picker";
 import {
   ModalField,
   ModalSection,
@@ -15,7 +15,9 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useInventory } from "@/contexts/inventory-context";
-import { DEFAULT_PRODUCT_IMAGE, getMarginPercent } from "@/lib/inventory";
+import { resolveProductImageUrl } from "@/lib/api/upload-product-image";
+import { DEFAULT_PRODUCT_IMAGE } from "@/lib/product-image";
+import { getMarginPercent } from "@/lib/inventory";
 import { cn, money } from "@/lib/utils";
 import { COMPATIBILITY_OPTIONS, type CompatibilityType } from "@/types/inventory";
 
@@ -30,7 +32,6 @@ type FormState = {
   categoryId: string;
   subcategoryId: string;
   supplierId: string;
-  imageUrl: string;
   purchasePrice: string;
   publicPrice: string;
   stock: string;
@@ -45,7 +46,6 @@ const emptyForm: FormState = {
   categoryId: "",
   subcategoryId: "",
   supplierId: "",
-  imageUrl: "",
   purchasePrice: "",
   publicPrice: "",
   stock: "",
@@ -54,11 +54,18 @@ const emptyForm: FormState = {
 };
 
 export function AddProductDialog({ trigger }: AddProductDialogProps) {
-  const { categories, suppliers, addProduct, getSubcategoriesByCategory } = useInventory();
+  const {
+    categories,
+    subcategories,
+    suppliers,
+    addProduct,
+    getSubcategoriesByCategory
+  } = useInventory();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState(DEFAULT_PRODUCT_IMAGE);
 
   const subcategoryOptions = useMemo(
@@ -73,6 +80,19 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
     return getMarginPercent(purchase, publicPrice);
   }, [form.purchasePrice, form.publicPrice]);
 
+  const catalogPrerequisite = useMemo(() => {
+    if (categories.length === 0) {
+      return "Creá al menos una categoría en el módulo Categorías.";
+    }
+    if (subcategories.length === 0) {
+      return "Creá al menos una subcategoría en el módulo Categorías.";
+    }
+    if (suppliers.length === 0) {
+      return "Creá al menos un proveedor en el módulo Proveedores.";
+    }
+    return null;
+  }, [categories.length, subcategories.length, suppliers.length]);
+
   const resetForm = () => {
     const firstCategoryId = categories[0]?.id ?? "";
     const firstSubcategoryId = firstCategoryId
@@ -86,6 +106,12 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
       supplierId: suppliers[0]?.id ?? "",
       compatibility: ["Motocicletas"]
     });
+
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(null);
     setImagePreview(DEFAULT_PRODUCT_IMAGE);
     setError(null);
   };
@@ -122,26 +148,33 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
     setError(null);
   };
 
-  const handleImageFile = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("El archivo debe ser una imagen.");
-      return;
+  const handleFileSelect = (file: File) => {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : DEFAULT_PRODUCT_IMAGE;
-      setImagePreview(result);
-      updateField("imageUrl", result);
-    };
-    reader.readAsDataURL(file);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setError(null);
+  };
+
+  const handleClearImage = () => {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(null);
+    setImagePreview(DEFAULT_PRODUCT_IMAGE);
+    setError(null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (catalogPrerequisite) {
+      setError(catalogPrerequisite);
+      return;
+    }
 
     const purchasePrice = Number(form.purchasePrice);
     const publicPrice = Number(form.publicPrice);
@@ -203,8 +236,18 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
       return;
     }
 
+    if (!imageFile) {
+      setError("Subí una imagen del producto desde tu PC.");
+      return;
+    }
+
     setSaving(true);
     try {
+      const imageUrl = await resolveProductImageUrl({
+        imageFile,
+        requireUpload: true
+      });
+
       await addProduct({
         internalCode: form.internalCode,
         name: form.name,
@@ -212,7 +255,7 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
         categoryId: form.categoryId,
         subcategoryId: form.subcategoryId,
         supplierId: form.supplierId,
-        imageUrl: form.imageUrl || DEFAULT_PRODUCT_IMAGE,
+        imageUrl,
         purchasePrice,
         publicPrice,
         stock,
@@ -239,46 +282,21 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
         )}
       </DialogTrigger>
 
-      <form onSubmit={handleSubmit}>
         <ProductModalShell
+          onSubmit={handleSubmit}
           title="Nuevo producto"
           description="Completá la ficha del repuesto con la misma estructura del detalle de producto."
           sidebar={
             <>
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                <div className="relative aspect-square">
-                  <ProductImage src={imagePreview} alt="Vista previa del producto" />
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                <ModalField label="URL de imagen" htmlFor="product-image-url">
-                  <Input
-                    id="product-image-url"
-                    placeholder="https://..."
-                    value={form.imageUrl.startsWith("data:") ? "" : form.imageUrl}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      updateField("imageUrl", value);
-                      setImagePreview(value || DEFAULT_PRODUCT_IMAGE);
-                    }}
-                  />
-                </ModalField>
-
-                <ModalField label="O subir archivo" htmlFor="product-image-file">
-                  <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/15 bg-white/[0.03] px-3 py-2.5 text-sm text-white/58 transition-colors hover:border-racing-red/40 hover:text-white">
-                    <ImagePlus className="size-4 shrink-0 text-racing-red" />
-                    <span>Seleccionar imagen local</span>
-                    <input
-                      id="product-image-file"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageFile}
-                    />
-                  </label>
-                </ModalField>
-              </div>
+              <ProductImagePicker
+                previewSrc={imagePreview}
+                imageFile={imageFile}
+                onFileSelect={handleFileSelect}
+                onClear={handleClearImage}
+                onInvalidFile={setError}
+                inputId="product-image-file"
+                mode="create"
+              />
 
               <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/40">Vista previa</p>
@@ -310,6 +328,11 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
           }
           footer={
             <div className="space-y-3">
+              {catalogPrerequisite ? (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                  {catalogPrerequisite}
+                </p>
+              ) : null}
               {error ? (
                 <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                   {error}
@@ -319,7 +342,9 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
                 <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">Guardar producto</Button>
+                <Button type="submit" disabled={saving || Boolean(catalogPrerequisite)}>
+                  {saving ? "Guardando..." : "Guardar producto"}
+                </Button>
               </div>
             </div>
           }
@@ -487,7 +512,6 @@ export function AddProductDialog({ trigger }: AddProductDialogProps) {
             </div>
           </ModalSection>
         </ProductModalShell>
-      </form>
     </Dialog>
   );
 }

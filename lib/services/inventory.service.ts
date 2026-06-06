@@ -11,6 +11,7 @@ import {
   STOCK_MOVEMENT_TO_DB
 } from "@/lib/db/mappers";
 import { DEFAULT_PRODUCT_IMAGE, pickProductAccent } from "@/lib/inventory";
+import { deleteProductImageIfManaged } from "@/lib/supabase/storage";
 import type {
   Category,
   CreateCategoryInput,
@@ -22,7 +23,10 @@ import type {
   ProductHistoryEntry,
   Subcategory,
   Supplier,
-  UpdateProductInput
+  UpdateCategoryInput,
+  UpdateProductInput,
+  UpdateSubcategoryInput,
+  UpdateSupplierInput
 } from "@/types/inventory";
 
 export type StockOperationResult = { ok: true } | { ok: false; error: string };
@@ -112,6 +116,110 @@ export async function createSubcategory(input: CreateSubcategoryInput): Promise<
   return mapSubcategory(row);
 }
 
+export type CatalogDeleteResult = { ok: true } | { ok: false; error: string };
+
+export async function updateCategory(
+  id: string,
+  input: UpdateCategoryInput
+): Promise<Category | null> {
+  const existing = await prisma.category.findUnique({ where: { id } });
+  if (!existing) return null;
+
+  try {
+    const row = await prisma.category.update({
+      where: { id },
+      data: {
+        name: input.name?.trim(),
+        description:
+          input.description !== undefined ? input.description.trim() || null : undefined
+      }
+    });
+
+    return mapCategory(row);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new Error("Ya existe una categoría con ese nombre.");
+    }
+    throw error;
+  }
+}
+
+export async function deleteCategory(id: string): Promise<CatalogDeleteResult> {
+  const existing = await prisma.category.findUnique({ where: { id } });
+  if (!existing) {
+    return { ok: false, error: "Categoría no encontrada." };
+  }
+
+  const productCount = await prisma.product.count({ where: { categoryId: id } });
+  if (productCount > 0) {
+    return {
+      ok: false,
+      error: `No se puede eliminar: ${productCount} producto(s) usan esta categoría.`
+    };
+  }
+
+  await prisma.category.delete({ where: { id } });
+  return { ok: true };
+}
+
+export async function updateSubcategory(
+  id: string,
+  input: UpdateSubcategoryInput
+): Promise<Subcategory | null> {
+  const existing = await prisma.subcategory.findUnique({ where: { id } });
+  if (!existing) return null;
+
+  if (input.categoryId) {
+    const category = await prisma.category.findUnique({ where: { id: input.categoryId } });
+    if (!category) {
+      throw new Error("La categoría seleccionada no existe.");
+    }
+  }
+
+  try {
+    const row = await prisma.subcategory.update({
+      where: { id },
+      data: {
+        categoryId: input.categoryId,
+        name: input.name?.trim(),
+        description:
+          input.description !== undefined ? input.description.trim() || null : undefined
+      }
+    });
+
+    return mapSubcategory(row);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new Error("Ya existe una subcategoría con ese nombre en la categoría.");
+    }
+    throw error;
+  }
+}
+
+export async function deleteSubcategory(id: string): Promise<CatalogDeleteResult> {
+  const existing = await prisma.subcategory.findUnique({ where: { id } });
+  if (!existing) {
+    return { ok: false, error: "Subcategoría no encontrada." };
+  }
+
+  const productCount = await prisma.product.count({ where: { subcategoryId: id } });
+  if (productCount > 0) {
+    return {
+      ok: false,
+      error: `No se puede eliminar: ${productCount} producto(s) usan esta subcategoría.`
+    };
+  }
+
+  await prisma.subcategory.delete({ where: { id } });
+  return { ok: true };
+}
+
 export async function createSupplier(input: CreateSupplierInput): Promise<Supplier> {
   const row = await prisma.supplier.create({
     data: {
@@ -125,9 +233,59 @@ export async function createSupplier(input: CreateSupplierInput): Promise<Suppli
   return mapSupplier(row);
 }
 
+export async function updateSupplier(
+  id: string,
+  input: UpdateSupplierInput
+): Promise<Supplier | null> {
+  const existing = await prisma.supplier.findUnique({ where: { id } });
+  if (!existing) return null;
+
+  const row = await prisma.supplier.update({
+    where: { id },
+    data: {
+      name: input.name?.trim(),
+      contact: input.contact !== undefined ? input.contact.trim() || null : undefined,
+      phone: input.phone !== undefined ? input.phone.trim() || null : undefined,
+      email: input.email !== undefined ? input.email.trim() || null : undefined
+    }
+  });
+
+  return mapSupplier(row);
+}
+
+export async function deleteSupplier(id: string): Promise<CatalogDeleteResult> {
+  const existing = await prisma.supplier.findUnique({ where: { id } });
+  if (!existing) {
+    return { ok: false, error: "Proveedor no encontrado." };
+  }
+
+  const [productCount, purchaseCount] = await Promise.all([
+    prisma.product.count({ where: { supplierId: id } }),
+    prisma.supplierPurchase.count({ where: { supplierId: id } })
+  ]);
+
+  if (productCount > 0) {
+    return {
+      ok: false,
+      error: `No se puede eliminar: ${productCount} producto(s) usan este proveedor.`
+    };
+  }
+
+  if (purchaseCount > 0) {
+    return {
+      ok: false,
+      error: `No se puede eliminar: ${purchaseCount} compra(s) registrada(s) con este proveedor.`
+    };
+  }
+
+  await prisma.supplier.delete({ where: { id } });
+  return { ok: true };
+}
+
 export async function createProduct(input: CreateProductInput): Promise<Product> {
   const productCount = await prisma.product.count();
 
+  try {
   const row = await prisma.$transaction(async (tx) => {
     const product = await tx.product.create({
       data: {
@@ -171,12 +329,22 @@ export async function createProduct(input: CreateProductInput): Promise<Product>
   });
 
   return mapProduct(row);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new Error("Ya existe un producto con ese código interno.");
+    }
+    throw error;
+  }
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput): Promise<Product | null> {
   const existing = await prisma.product.findFirst({ where: { id, active: true } });
   if (!existing) return null;
 
+  try {
   const row = await prisma.$transaction(async (tx) => {
     const updated = await tx.product.update({
       where: { id },
@@ -214,7 +382,22 @@ export async function updateProduct(id: string, input: UpdateProductInput): Prom
     return updated;
   });
 
-  return mapProduct(row);
+  const mapped = mapProduct(row);
+
+  if (input.imageUrl !== undefined && mapped.imageUrl !== existing.imageUrl) {
+    await deleteProductImageIfManaged(existing.imageUrl);
+  }
+
+  return mapped;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new Error("Ya existe un producto con ese código interno.");
+    }
+    throw error;
+  }
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {

@@ -10,8 +10,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "AYG Motor Racing | Demo MVP",
-  description: "Sistema integral para gestión de repuestos y taller de motos"
+  title: "AYG Motor Racing | Gestión",
+  description: "Sistema integral para gestión de repuestos, ventas y taller de motos"
 };
 
 export default function RootLayout({

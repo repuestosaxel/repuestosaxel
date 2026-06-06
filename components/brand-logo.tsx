@@ -12,7 +12,7 @@ export function BrandLogo({ compact = false, className }: BrandLogoProps) {
     <div className={cn("flex items-center gap-3", className)}>
       <div className="">
         <Image
-          src="/logoayg.jpeg"
+          src="/ayg.png"
           alt="AYG Motor Racing"
           width={90}
           height={42}

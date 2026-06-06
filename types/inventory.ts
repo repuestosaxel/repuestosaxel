@@ -71,14 +71,32 @@ export type CreateCategoryInput = {
   description?: string;
 };
 
+export type UpdateCategoryInput = {
+  name?: string;
+  description?: string;
+};
+
 export type CreateSubcategoryInput = {
   categoryId: string;
   name: string;
   description?: string;
 };
 
+export type UpdateSubcategoryInput = {
+  categoryId?: string;
+  name?: string;
+  description?: string;
+};
+
 export type CreateSupplierInput = {
   name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+};
+
+export type UpdateSupplierInput = {
+  name?: string;
   contact?: string;
   phone?: string;
   email?: string;

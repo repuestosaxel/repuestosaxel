@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { ImagePlus, Pencil } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Pencil } from "lucide-react";
 
-import { ProductImage } from "@/components/stock/product-image";
+import { ProductImagePicker } from "@/components/stock/product-image-picker";
 import {
   ModalField,
   ModalSection,
@@ -15,7 +15,9 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useInventory } from "@/contexts/inventory-context";
-import { DEFAULT_PRODUCT_IMAGE, getMarginPercent } from "@/lib/inventory";
+import { resolveProductImageUrl } from "@/lib/api/upload-product-image";
+import { getMarginPercent } from "@/lib/inventory";
+import { DEFAULT_PRODUCT_IMAGE } from "@/lib/product-image";
 import { cn, money } from "@/lib/utils";
 import { COMPATIBILITY_OPTIONS, type CompatibilityType, type Product } from "@/types/inventory";
 
@@ -32,7 +34,6 @@ type FormState = {
   categoryId: string;
   subcategoryId: string;
   supplierId: string;
-  imageUrl: string;
   purchasePrice: string;
   publicPrice: string;
   stock: string;
@@ -48,7 +49,6 @@ function productToForm(product: Product): FormState {
     categoryId: product.categoryId,
     subcategoryId: product.subcategoryId,
     supplierId: product.supplierId,
-    imageUrl: product.imageUrl,
     purchasePrice: String(product.purchasePrice),
     publicPrice: String(product.publicPrice),
     stock: String(product.stock),
@@ -62,12 +62,16 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState(DEFAULT_PRODUCT_IMAGE);
+  const [savedImageUrl, setSavedImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (product && open) {
       setForm(productToForm(product));
+      setImageFile(null);
       setImagePreview(product.imageUrl || DEFAULT_PRODUCT_IMAGE);
+      setSavedImageUrl(null);
       setError(null);
     }
   }, [product, open]);
@@ -86,6 +90,8 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
   }, [form]);
 
   if (!product || !form) return null;
+
+  const existingImageUrl = product.imageUrl || DEFAULT_PRODUCT_IMAGE;
 
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((current) => (current ? { ...current, [field]: value } : current));
@@ -120,22 +126,24 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
     setError(null);
   };
 
-  const handleImageFile = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("El archivo debe ser una imagen.");
-      return;
+  const handleFileSelect = (file: File) => {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : DEFAULT_PRODUCT_IMAGE;
-      setImagePreview(result);
-      updateField("imageUrl", result);
-    };
-    reader.readAsDataURL(file);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setError(null);
+  };
+
+  const handleClearImage = () => {
+    if (imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(null);
+    setImagePreview(savedImageUrl ?? existingImageUrl);
+    setError(null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -203,14 +211,19 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
 
     setSaving(true);
     try {
-      await updateProduct(product.id, {
+      const imageUrl = await resolveProductImageUrl({
+        imageFile,
+        existingUrl: product.imageUrl
+      });
+
+      const updated = await updateProduct(product.id, {
         internalCode: form.internalCode,
         name: form.name,
         description: form.description,
         categoryId: form.categoryId,
         subcategoryId: form.subcategoryId,
         supplierId: form.supplierId,
-        imageUrl: form.imageUrl || DEFAULT_PRODUCT_IMAGE,
+        imageUrl,
         purchasePrice,
         publicPrice,
         stock,
@@ -218,7 +231,17 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
         compatibility: form.compatibility
       });
 
-      onOpenChange(false);
+      if (imageFile && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+
+      setImageFile(null);
+      setSavedImageUrl(imageUrl);
+      setImagePreview(imageUrl);
+
+      if (updated) {
+        onOpenChange(false);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo actualizar el producto.");
     } finally {
@@ -228,46 +251,22 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <form onSubmit={handleSubmit}>
         <ProductModalShell
+          onSubmit={handleSubmit}
           title="Editar producto"
           description={`${product.id} · Actualizá la ficha del repuesto`}
           sidebar={
             <>
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                <div className="relative aspect-square">
-                  <ProductImage src={imagePreview} alt="Vista previa del producto" />
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                <ModalField label="URL de imagen" htmlFor="edit-product-image-url">
-                  <Input
-                    id="edit-product-image-url"
-                    placeholder="https://..."
-                    value={form.imageUrl.startsWith("data:") ? "" : form.imageUrl}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      updateField("imageUrl", value);
-                      setImagePreview(value || DEFAULT_PRODUCT_IMAGE);
-                    }}
-                  />
-                </ModalField>
-
-                <ModalField label="O subir archivo" htmlFor="edit-product-image-file">
-                  <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/15 bg-white/[0.03] px-3 py-2.5 text-sm text-white/58 transition-colors hover:border-racing-red/40 hover:text-white">
-                    <ImagePlus className="size-4 shrink-0 text-racing-red" />
-                    <span>Seleccionar imagen local</span>
-                    <input
-                      id="edit-product-image-file"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageFile}
-                    />
-                  </label>
-                </ModalField>
-              </div>
+              <ProductImagePicker
+                previewSrc={imagePreview}
+                imageFile={imageFile}
+                onFileSelect={handleFileSelect}
+                onClear={handleClearImage}
+                onInvalidFile={setError}
+                inputId="edit-product-image-file"
+                mode="edit"
+                existingImageUrl={existingImageUrl}
+              />
 
               <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/40">Vista previa</p>
@@ -301,9 +300,9 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
                 <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={saving}>
                   <Pencil />
-                  Guardar cambios
+                  {saving ? "Guardando..." : "Guardar cambios"}
                 </Button>
               </div>
             </div>
@@ -459,7 +458,6 @@ export function EditProductDialog({ product, open, onOpenChange }: EditProductDi
             </p>
           </ModalSection>
         </ProductModalShell>
-      </form>
     </Dialog>
   );
 }

@@ -12,6 +12,7 @@ import { AddProductDialog } from "@/components/stock/add-product-dialog";
 import { ProductCard } from "@/components/stock/product-card";
 import { ProductDetailDialog } from "@/components/stock/product-detail-dialog";
 import { StockStats } from "@/components/stock/stock-stats";
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ProductImage } from "@/components/stock/product-image";
@@ -38,6 +39,9 @@ export function StockModule() {
     categories,
     products,
     suppliers,
+    loading,
+    error,
+    refresh,
     getCategoryById,
     getSubcategoryById,
     getSupplierById,
@@ -54,6 +58,7 @@ export function StockModule() {
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
+    
 
     return products.filter((product) => {
       const category = getCategoryById(product.categoryId);
@@ -114,6 +119,8 @@ export function StockModule() {
         />
       }
     >
+      <ContextBanner loading={loading} error={error} onRetry={refresh} label="inventario" />
+
       <StockStats />
 
       <Card className="space-y-4 p-4">

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CreditCard, PackageCheck, Plus, ReceiptText, Search, TrendingUp } from "lucide-react";
 
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -18,7 +19,7 @@ import { cn, money } from "@/lib/utils";
 import type { Sale } from "@/types/sales";
 
 export function SalesModule() {
-  const { sales, getSaleById } = useSales();
+  const { sales, loading, error, refresh, getSaleById } = useSales();
   const metrics = useFinanceMetrics();
   const [search, setSearch] = useState("");
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
@@ -95,6 +96,8 @@ export function SalesModule() {
         />
       }
     >
+      <ContextBanner loading={loading} error={error} onRetry={refresh} label="ventas" />
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((metric) => (
           <StatCard key={metric.title} {...metric} />

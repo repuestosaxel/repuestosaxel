@@ -38,8 +38,11 @@ export default function LoginPage() {
                     Stock, ventas, clientes, taller y finanzas en una interfaz diseñada para tomar decisiones sin fricción.
                   </p>
                   <div className="mt-6 grid grid-cols-3 gap-3">
-                    {["+24% ventas", "9 motos", "82% objetivo"].map((item) => (
-                      <div key={item} className="rounded-xl border border-white/10 bg-black/30 p-3 text-center font-display text-sm font-bold">
+                    {["Stock", "Ventas", "Taller"].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-xl border border-white/10 bg-black/30 p-3 text-center font-display text-sm font-bold"
+                      >
                         {item}
                       </div>
                     ))}
@@ -54,13 +57,13 @@ export default function LoginPage() {
               </div>
               <div className="mt-10 lg:mt-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-racing-red/30 bg-racing-red/12 px-3 py-1.5 text-xs font-bold text-red-100">
-                  <ShieldCheck className="size-4" /> Demo comercial MVP
+                  <ShieldCheck className="size-4" /> Sistema de gestión
                 </div>
                 <h1 className="mt-5 font-display text-4xl font-bold tracking-normal text-white md:text-5xl">
                   Bienvenido a AYG Motor Racing
                 </h1>
                 <p className="mt-4 text-base leading-7 text-white/58">
-                  Sistema integral para gestión de repuestos y taller
+                  Accedé al panel para gestionar repuestos, ventas y taller.
                 </p>
               </div>
 
@@ -69,13 +72,13 @@ export default function LoginPage() {
                   <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/68">
                     <Mail className="size-4 text-racing-red" /> Usuario
                   </span>
-                  <Input defaultValue="admin@aygmotor.com" />
+                  <Input placeholder="tu@email.com" autoComplete="username" />
                 </label>
                 <label className="block">
                   <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/68">
                     <LockKeyhole className="size-4 text-racing-red" /> Contraseña
                   </span>
-                  <Input type="password" defaultValue="demo2026" />
+                  <Input type="password" placeholder="••••••••" autoComplete="current-password" />
                 </label>
                 <Button asChild className="h-12 w-full text-base">
                   <Link href="/dashboard">
@@ -85,9 +88,9 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.045] p-4">
-                <p className="text-sm font-semibold text-white">Acceso de presentación</p>
+                <p className="text-sm font-semibold text-white">Primeros pasos</p>
                 <p className="mt-1 text-sm leading-6 text-white/50">
-                  Los datos son mockeados para mostrar la experiencia visual y el flujo del producto.
+                  Configurá categorías y proveedores, luego cargá productos con imagen desde tu PC. Los datos se guardan en la base de datos en tiempo real.
                 </p>
               </div>
             </Card>

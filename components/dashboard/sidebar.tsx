@@ -70,9 +70,9 @@ export function Sidebar({ active, onChange, open, onClose }: SidebarProps) {
         </nav>
 
         <div className="rounded-xl border border-racing-red/25 bg-racing-red/10 p-4">
-          <p className="font-display text-sm font-bold">Modo demo comercial</p>
+          <p className="font-display text-sm font-bold">Carga de productos</p>
           <p className="mt-1 text-xs leading-5 text-white/56">
-            Datos hardcodeados para presentar flujo, diseño y valor del producto.
+            1. Categorías → 2. Proveedores → 3. Stock. Cada producto necesita imagen, precios y clasificación.
           </p>
         </div>
       </aside>

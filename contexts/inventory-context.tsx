@@ -22,7 +22,10 @@ import type {
   ProductHistoryEntry,
   Subcategory,
   Supplier,
-  UpdateProductInput
+  UpdateCategoryInput,
+  UpdateProductInput,
+  UpdateSubcategoryInput,
+  UpdateSupplierInput
 } from "@/types/inventory";
 
 type InventoryContextValue = {
@@ -34,8 +37,14 @@ type InventoryContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   addCategory: (input: CreateCategoryInput) => Promise<Category>;
+  updateCategory: (id: string, input: UpdateCategoryInput) => Promise<Category>;
+  deleteCategory: (id: string) => Promise<void>;
   addSubcategory: (input: CreateSubcategoryInput) => Promise<Subcategory>;
+  updateSubcategory: (id: string, input: UpdateSubcategoryInput) => Promise<Subcategory>;
+  deleteSubcategory: (id: string) => Promise<void>;
   addSupplier: (input: CreateSupplierInput) => Promise<Supplier>;
+  updateSupplier: (id: string, input: UpdateSupplierInput) => Promise<Supplier>;
+  deleteSupplier: (id: string) => Promise<void>;
   addProduct: (input: CreateProductInput) => Promise<Product>;
   updateProduct: (id: string, input: UpdateProductInput) => Promise<Product | undefined>;
   deleteProduct: (id: string) => Promise<boolean>;
@@ -111,16 +120,50 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     return category;
   }, []);
 
+  const updateCategory = useCallback(async (id: string, input: UpdateCategoryInput) => {
+    const category = await api.patch<Category>(`/api/categories/${id}`, input);
+    setCategories((current) => current.map((item) => (item.id === id ? category : item)));
+    return category;
+  }, []);
+
+  const deleteCategory = useCallback(async (id: string) => {
+    await api.delete<{ id: string }>(`/api/categories/${id}`);
+    setCategories((current) => current.filter((item) => item.id !== id));
+    setSubcategories((current) => current.filter((item) => item.categoryId !== id));
+  }, []);
+
   const addSubcategory = useCallback(async (input: CreateSubcategoryInput) => {
     const subcategory = await api.post<Subcategory>("/api/subcategories", input);
     setSubcategories((current) => [...current, subcategory]);
     return subcategory;
   }, []);
 
+  const updateSubcategory = useCallback(async (id: string, input: UpdateSubcategoryInput) => {
+    const subcategory = await api.patch<Subcategory>(`/api/subcategories/${id}`, input);
+    setSubcategories((current) => current.map((item) => (item.id === id ? subcategory : item)));
+    return subcategory;
+  }, []);
+
+  const deleteSubcategory = useCallback(async (id: string) => {
+    await api.delete<{ id: string }>(`/api/subcategories/${id}`);
+    setSubcategories((current) => current.filter((item) => item.id !== id));
+  }, []);
+
   const addSupplier = useCallback(async (input: CreateSupplierInput) => {
     const supplier = await api.post<Supplier>("/api/suppliers", input);
     setSuppliers((current) => [...current, supplier]);
     return supplier;
+  }, []);
+
+  const updateSupplier = useCallback(async (id: string, input: UpdateSupplierInput) => {
+    const supplier = await api.patch<Supplier>(`/api/suppliers/${id}`, input);
+    setSuppliers((current) => current.map((item) => (item.id === id ? supplier : item)));
+    return supplier;
+  }, []);
+
+  const deleteSupplier = useCallback(async (id: string) => {
+    await api.delete<{ id: string }>(`/api/suppliers/${id}`);
+    setSuppliers((current) => current.filter((item) => item.id !== id));
   }, []);
 
   const addProduct = useCallback(async (input: CreateProductInput) => {
@@ -155,8 +198,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       addCategory,
+      updateCategory,
+      deleteCategory,
       addSubcategory,
+      updateSubcategory,
+      deleteSubcategory,
       addSupplier,
+      updateSupplier,
+      deleteSupplier,
       addProduct,
       updateProduct,
       deleteProduct,
@@ -176,8 +225,14 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       addCategory,
+      updateCategory,
+      deleteCategory,
       addSubcategory,
+      updateSubcategory,
+      deleteSubcategory,
       addSupplier,
+      updateSupplier,
+      deleteSupplier,
       addProduct,
       updateProduct,
       deleteProduct,

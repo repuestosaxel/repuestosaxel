@@ -1,19 +1,42 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Layers2, Search } from "lucide-react";
+import { Layers2, Pencil, Search, Trash2 } from "lucide-react";
 
 import { AddCategoryDialog } from "@/components/stock/add-category-dialog";
 import { AddSubcategoryDialog } from "@/components/stock/add-subcategory-dialog";
+import { EditCategoryDialog } from "@/components/stock/edit-category-dialog";
+import { EditSubcategoryDialog } from "@/components/stock/edit-subcategory-dialog";
+import { ContextBanner } from "@/components/dashboard/context-banner";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useInventory } from "@/contexts/inventory-context";
+import { cn } from "@/lib/utils";
+import type { Category, Subcategory } from "@/types/inventory";
 
 export function CategoriesModule() {
-  const { categories, subcategories, getSubcategoriesByCategory } = useInventory();
+  const {
+    categories,
+    subcategories,
+    products,
+    loading,
+    error,
+    refresh,
+    getSubcategoriesByCategory,
+    deleteCategory,
+    deleteSubcategory
+  } = useInventory();
+
   const [search, setSearch] = useState("");
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
+  const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState<string | null>(null);
+  const [confirmDeleteSubcategoryId, setConfirmDeleteSubcategoryId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const filteredCategories = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -34,6 +57,38 @@ export function CategoriesModule() {
       );
     });
   }, [categories, search, getSubcategoriesByCategory]);
+
+  const getProductCountByCategory = (categoryId: string) =>
+    products.filter((product) => product.categoryId === categoryId).length;
+
+  const getProductCountBySubcategory = (subcategoryId: string) =>
+    products.filter((product) => product.subcategoryId === subcategoryId).length;
+
+  const handleDeleteCategory = async (category: Category) => {
+    setDeleting(true);
+    setActionError(null);
+    try {
+      await deleteCategory(category.id);
+      setConfirmDeleteCategoryId(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo eliminar la categoría.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSubcategory = async (subcategory: Subcategory) => {
+    setDeleting(true);
+    setActionError(null);
+    try {
+      await deleteSubcategory(subcategory.id);
+      setConfirmDeleteSubcategoryId(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "No se pudo eliminar la subcategoría.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const stats = [
     {
@@ -66,11 +121,19 @@ export function CategoriesModule() {
         </div>
       }
     >
+      <ContextBanner loading={loading} error={error} onRetry={refresh} label="categorías" />
+
       <div className="grid gap-4 sm:grid-cols-2">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
         ))}
       </div>
+
+      {actionError ? (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {actionError}
+        </p>
+      ) : null}
 
       <Card className="p-4">
         <div className="relative max-w-md">
@@ -95,27 +158,76 @@ export function CategoriesModule() {
         ) : (
           filteredCategories.map((category) => {
             const subs = getSubcategoriesByCategory(category.id);
+            const categoryProductCount = getProductCountByCategory(category.id);
+            const isConfirmingCategoryDelete = confirmDeleteCategoryId === category.id;
 
             return (
               <Card key={category.id} className="overflow-hidden">
                 <div className="border-b border-white/10 bg-white/[0.04] p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-racing-red">
-                        {category.id}
-                      </p>
-                      <h2 className="mt-1 font-display text-xl font-bold text-white">
-                        {category.name}
-                      </h2>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-display text-xl font-bold text-white">{category.name}</h2>
                       {category.description ? (
-                        <p className="mt-2 text-sm leading-6 text-white/52">
-                          {category.description}
+                        <p className="mt-2 text-sm leading-6 text-white/52">{category.description}</p>
+                      ) : null}
+                      {categoryProductCount > 0 ? (
+                        <p className="mt-2 text-xs text-white/38">
+                          {categoryProductCount} producto{categoryProductCount === 1 ? "" : "s"} vinculado
+                          {categoryProductCount === 1 ? "" : "s"}
                         </p>
                       ) : null}
                     </div>
-                    <span className="inline-flex h-fit rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-white/58">
-                      {subs.length} subcategoría{subs.length === 1 ? "" : "s"}
-                    </span>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex h-fit rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-white/58">
+                        {subs.length} subcategoría{subs.length === 1 ? "" : "s"}
+                      </span>
+
+                      {isConfirmingCategoryDelete ? (
+                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2">
+                          <span className="text-xs text-red-100">¿Eliminar categoría?</span>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={deleting}
+                            onClick={() => setConfirmDeleteCategoryId(null)}
+                          >
+                            No
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={deleting}
+                            onClick={() => void handleDeleteCategory(category)}
+                          >
+                            {deleting ? "..." : "Sí, eliminar"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setActionError(null);
+                              setEditingCategory(category);
+                            }}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="border-red-500/20 text-red-200 hover:border-red-500/35 hover:bg-red-500/10"
+                            onClick={() => {
+                              setActionError(null);
+                              setConfirmDeleteCategoryId(category.id);
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -126,22 +238,76 @@ export function CategoriesModule() {
                     </p>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {subs.map((sub) => (
-                        <div
-                          key={sub.id}
-                          className="rounded-xl border border-white/10 bg-white/[0.045] p-4 transition-colors hover:border-racing-red/30"
-                        >
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-racing-red">
-                            {sub.id}
-                          </p>
-                          <p className="mt-1 font-display font-bold text-white">{sub.name}</p>
-                          {sub.description ? (
-                            <p className="mt-2 text-xs leading-5 text-white/42">
-                              {sub.description}
-                            </p>
-                          ) : null}
-                        </div>
-                      ))}
+                      {subs.map((sub) => {
+                        const subProductCount = getProductCountBySubcategory(sub.id);
+                        const isConfirmingSubDelete = confirmDeleteSubcategoryId === sub.id;
+
+                        return (
+                          <div
+                            key={sub.id}
+                            className={cn(
+                              "rounded-xl border border-white/10 bg-white/[0.045] p-4 transition-colors hover:border-racing-red/30",
+                              isConfirmingSubDelete && "border-red-500/30 bg-red-500/5"
+                            )}
+                          >
+                            <p className="font-display font-bold text-white">{sub.name}</p>
+                            {sub.description ? (
+                              <p className="mt-2 text-xs leading-5 text-white/42">{sub.description}</p>
+                            ) : null}
+                            {subProductCount > 0 ? (
+                              <p className="mt-2 text-[11px] text-white/34">
+                                {subProductCount} producto{subProductCount === 1 ? "" : "s"}
+                              </p>
+                            ) : null}
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {isConfirmingSubDelete ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    disabled={deleting}
+                                    onClick={() => setConfirmDeleteSubcategoryId(null)}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    disabled={deleting}
+                                    onClick={() => void handleDeleteSubcategory(sub)}
+                                  >
+                                    {deleting ? "..." : "Confirmar"}
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setActionError(null);
+                                      setEditingSubcategory(sub);
+                                    }}
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="border-red-500/20 text-red-200 hover:border-red-500/35 hover:bg-red-500/10"
+                                    onClick={() => {
+                                      setActionError(null);
+                                      setConfirmDeleteSubcategoryId(sub.id);
+                                    }}
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -150,6 +316,22 @@ export function CategoriesModule() {
           })
         )}
       </div>
+
+      <EditCategoryDialog
+        category={editingCategory}
+        open={Boolean(editingCategory)}
+        onOpenChange={(open) => {
+          if (!open) setEditingCategory(null);
+        }}
+      />
+
+      <EditSubcategoryDialog
+        subcategory={editingSubcategory}
+        open={Boolean(editingSubcategory)}
+        onOpenChange={(open) => {
+          if (!open) setEditingSubcategory(null);
+        }}
+      />
     </ModuleShell>
   );
 }

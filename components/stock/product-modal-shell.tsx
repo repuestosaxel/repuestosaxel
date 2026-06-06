@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 
 import {
   DialogContent,
@@ -17,6 +17,7 @@ type ProductModalShellProps = {
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 };
 
 export function ProductModalShell({
@@ -25,17 +26,11 @@ export function ProductModalShell({
   sidebar,
   children,
   footer,
-  className
+  className,
+  onSubmit
 }: ProductModalShellProps) {
-  return (
-    <DialogContent
-      className={cn(
-        "gap-0 overflow-hidden border-white/10 bg-[#060606] p-0 text-white",
-        "w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] sm:max-w-2xl lg:max-w-6xl",
-        className
-      )}
-    >
-      <div className="max-h-[min(92dvh,92vh)] overflow-y-auto overscroll-contain lg:flex lg:max-h-[92vh] lg:overflow-hidden">
+  const body = (
+    <div className="max-h-[min(92dvh,92vh)] overflow-y-auto overscroll-contain lg:flex lg:max-h-[92vh] lg:overflow-hidden">
         <aside className="w-full shrink-0 border-b border-white/10 bg-white/[0.03] lg:w-[360px] lg:border-b-0 lg:border-r">
           <div className="p-5">
             <DialogHeader className="space-y-2 text-left">
@@ -59,6 +54,17 @@ export function ProductModalShell({
           ) : null}
         </div>
       </div>
+  );
+
+  return (
+    <DialogContent
+      className={cn(
+        "gap-0 overflow-hidden border-white/10 bg-[#060606] p-0 text-white",
+        "w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] sm:max-w-2xl lg:max-w-6xl",
+        className
+      )}
+    >
+      {onSubmit ? <form onSubmit={onSubmit}>{body}</form> : body}
     </DialogContent>
   );
 }
